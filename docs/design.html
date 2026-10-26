@@ -1,0 +1,913 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Transport Survivors Design</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@500;700&family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: one reading column (about 70ch) on a "grass" ground; figures and tables may run wider inside their own scroll boxes. */
+:root {
+  --bg: #eef1ea;
+  --paper: #f9faf6;
+  --ink: #1b231e;
+  --muted: #56615a;
+  --rule: #cbd2c6;
+  --accent: #1f4ea3;      /* company colour: dark blue */
+  --accent-soft: #dbe5f6;
+  --danger: #b8382b;      /* signal at danger */
+  --cargo: #c8920f;       /* cargo crates */
+  --grass: #9cc07a;
+  --grass-2: #8fb66c;
+  --ballast: #8d7f70;
+  --sleeper: #5b4634;
+  --steel: #7d878d;
+  --water: #4a83bf;
+  --font-display: "Pixelify Sans", "Courier New", monospace;
+  --font-body: "Atkinson Hyperlegible", "Segoe UI", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #131915; --paper: #1b231e; --ink: #e2e8e0; --muted: #9aa79e; --rule: #2e3a32;
+    --accent: #86a9ff; --accent-soft: #23314f; --danger: #ff7364; --cargo: #f0bd3d;
+    --grass: #3e6233; --grass-2: #375a2e; --ballast: #6f655a; --sleeper: #2a2119; --steel: #a3adb3; --water: #3f78b5;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #131915; --paper: #1b231e; --ink: #e2e8e0; --muted: #9aa79e; --rule: #2e3a32;
+  --accent: #86a9ff; --accent-soft: #23314f; --danger: #ff7364; --cargo: #f0bd3d;
+  --grass: #3e6233; --grass-2: #375a2e; --ballast: #6f655a; --sleeper: #2a2119; --steel: #a3adb3; --water: #3f78b5;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body {
+  background: var(--bg); color: var(--ink);
+  font-family: var(--font-body); font-size: 17px; line-height: 1.6;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 0 64px;
+}
+main { max-width: 780px; margin: 0 auto; display: grid; gap: 56px; }
+header.top { max-width: 780px; margin: 0 auto; padding-block: 40px 28px; display: grid; gap: 14px; }
+.eyebrow { font-family: var(--font-mono); font-size: 12.5px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+h1, h2 { font-family: var(--font-display); font-weight: 700; line-height: 1.1; text-wrap: balance; margin: 0; }
+h1 { font-size: clamp(38px, 7vw, 60px); letter-spacing: .01em; }
+h2 { font-size: 28px; }
+h3 { font-size: 18px; margin: 0; text-wrap: balance; }
+p { margin: 0; max-width: 68ch; }
+section { display: grid; gap: 18px; min-width: 0; }
+.sub { display: flex; gap: 12px; align-items: baseline; flex-wrap: wrap; }
+.sub .num { font-family: var(--font-mono); color: var(--accent); font-size: 14px; }
+.lede { font-size: 19px; color: var(--ink); }
+.muted { color: var(--muted); }
+.rails {
+  height: 14px; border-radius: 2px;
+  background:
+    linear-gradient(var(--steel), var(--steel)) 0 3px / 100% 2px no-repeat,
+    linear-gradient(var(--steel), var(--steel)) 0 9px / 100% 2px no-repeat,
+    repeating-linear-gradient(90deg, var(--sleeper) 0 5px, transparent 5px 14px),
+    var(--ballast);
+}
+.facts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1px; background: var(--rule); border: 1px solid var(--rule); }
+.facts div { background: var(--paper); padding: 10px 14px; display: grid; gap: 2px; min-width: 0; }
+.facts dt { font-family: var(--font-mono); font-size: 11.5px; letter-spacing: .07em; text-transform: uppercase; color: var(--muted); }
+.facts dd { margin: 0; font-weight: 700; }
+nav.toc ol { margin: 0; padding-left: 22px; columns: 2 220px; column-gap: 32px; }
+nav.toc a { color: var(--accent); text-decoration: none; }
+nav.toc a:hover, nav.toc a:focus-visible { text-decoration: underline; }
+a:focus-visible, button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.approve { border: 2px solid var(--accent); background: var(--accent-soft); padding: 18px 20px; display: grid; gap: 12px; }
+.approve h2 { font-size: 22px; }
+.approve ol { margin: 0; padding-left: 22px; display: grid; gap: 6px; }
+ul, ol { margin: 0; padding-left: 22px; }
+li { max-width: 66ch; }
+.list-tight { display: grid; gap: 4px; }
+figure { margin: 0; display: grid; gap: 8px; min-width: 0; align-content: start; }
+figcaption { font-size: 14.5px; color: var(--muted); max-width: 68ch; }
+.fig { overflow-x: auto; background: var(--paper); border: 1px solid var(--rule); padding: 14px; }
+.fig svg { display: block; width: 100%; height: auto; min-width: 560px; }
+.tbl { overflow-x: auto; border: 1px solid var(--rule); background: var(--paper); }
+table { border-collapse: collapse; width: 100%; font-size: 15px; }
+th, td { text-align: left; vertical-align: top; padding: 8px 12px; border-bottom: 1px solid var(--rule); }
+th { font-family: var(--font-mono); font-size: 12px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); font-weight: 600; white-space: nowrap; }
+tr:last-child td { border-bottom: 0; }
+td.n { font-variant-numeric: tabular-nums; white-space: nowrap; }
+code, pre, kbd { font-family: var(--font-mono); font-size: 14px; }
+code { background: var(--paper); border: 1px solid var(--rule); padding: 0 4px; border-radius: 3px; }
+kbd { border: 1px solid var(--rule); border-bottom-width: 2px; background: var(--paper); padding: 0 5px; border-radius: 3px; white-space: nowrap; }
+pre { margin: 0; background: var(--paper); border: 1px solid var(--rule); padding: 14px 16px; overflow-x: auto; line-height: 1.5; }
+pre code { border: 0; padding: 0; background: none; }
+.tag { display: inline-block; font-family: var(--font-mono); font-size: 11.5px; letter-spacing: .05em; padding: 1px 7px; border-radius: 3px; border: 1px solid currentColor; white-space: nowrap; }
+.tag.in { color: var(--accent); }
+.tag.out { color: var(--muted); }
+.tag.rec { color: var(--accent); background: var(--accent-soft); }
+.cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 20px; }
+.cols > div { display: grid; gap: 10px; align-content: start; min-width: 0; }
+.sketch { background: var(--paper); border: 1px solid var(--rule); padding: 14px; display: grid; gap: 12px; }
+.sketch canvas { width: 100%; max-width: 100%; height: auto; display: block; background: var(--grass); }
+.controls { display: flex; gap: 16px; align-items: center; flex-wrap: wrap; font-size: 15px; }
+button { font: inherit; font-weight: 700; color: var(--paper); background: var(--accent); border: 0; padding: 6px 14px; border-radius: 3px; cursor: pointer; }
+label { display: inline-flex; gap: 8px; align-items: center; }
+.note { border-left: 3px solid var(--cargo); padding: 2px 0 2px 14px; }
+.risk td:first-child { font-weight: 700; }
+/* SVG classes, all colours from tokens */
+.s-paper { fill: var(--paper); }
+.s-bg { fill: var(--bg); }
+.s-grass { fill: var(--grass); }
+.s-grass2 { fill: var(--grass-2); }
+.s-water { fill: var(--water); }
+.s-box { fill: var(--paper); stroke: var(--ink); stroke-width: 1.5; }
+.s-box-acc { fill: var(--accent-soft); stroke: var(--accent); stroke-width: 2; }
+.s-box-dng { fill: var(--paper); stroke: var(--danger); stroke-width: 2; }
+.s-line { fill: none; stroke: var(--ink); stroke-width: 1.5; }
+.s-line-acc { fill: none; stroke: var(--accent); stroke-width: 2; }
+.s-line-dng { fill: none; stroke: var(--danger); stroke-width: 1.5; stroke-dasharray: 4 4; }
+.s-grid { fill: none; stroke: var(--rule); stroke-width: 1; }
+.s-ballast { fill: none; stroke: var(--ballast); stroke-width: 14; }
+.s-sleepers { fill: none; stroke: var(--sleeper); stroke-width: 11; stroke-dasharray: 3 5; }
+.s-new { fill: none; stroke: var(--accent); stroke-width: 6; stroke-dasharray: 7 5; }
+.s-route { fill: none; stroke: var(--accent); stroke-width: 4; opacity: .85; }
+.s-text { fill: var(--ink); font-family: var(--font-body); font-size: 14px; }
+.s-text-sm { fill: var(--muted); font-family: var(--font-body); font-size: 12px; }
+.s-mono { fill: var(--ink); font-family: var(--font-mono); font-size: 12px; }
+.s-mono-acc { fill: var(--accent); font-family: var(--font-mono); font-size: 12px; font-weight: 600; }
+.s-title { fill: var(--ink); font-family: var(--font-body); font-size: 14px; font-weight: 700; }
+.s-acc { fill: var(--accent); }
+.s-dng { fill: var(--danger); }
+.s-cargo { fill: var(--cargo); }
+.s-steel { fill: var(--steel); }
+.s-ink { fill: var(--ink); }
+.s-area { fill: var(--accent); opacity: .16; }
+.s-curve { fill: none; stroke: var(--accent); stroke-width: 2.5; }
+@media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto !important; } }
+@media (max-width: 520px) { body { font-size: 16px; } h2 { font-size: 24px; } .facts { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+</style>
+
+<header class="top">
+  <div class="eyebrow">Game design document · Draft for approval</div>
+  <h1>Transport Survivors</h1>
+  <div class="rails" aria-hidden="true"></div>
+  <p class="lede">A single-player survivors game for the browser. You drive a train. The train lays its own track as it goes. Wagons are weapons. Hordes come in from every side. Stay alive for ten minutes and beat the boss.</p>
+  <dl class="facts">
+    <div><dt>Genre</dt><dd>Survivors-like, top-down</dd></div>
+    <div><dt>Run length</dt><dd>10 min + boss</dd></div>
+    <div><dt>Language</dt><dd>Rust → WebAssembly</dd></div>
+    <div><dt>Engine</dt><dd>macroquad 0.4.16</dd></div>
+    <div><dt>Toolchain</dt><dd>mise (tools + tasks)</dd></div>
+    <div><dt>Branch</dt><dd><code>main</code></dd></div>
+  </dl>
+</header>
+
+<main>
+
+<section class="approve" aria-labelledby="dec">
+  <h2 id="dec">Decisions to approve</h2>
+  <p>This document uses the defaults below. Say OK to approve them all, or name the number to change.</p>
+  <ol>
+    <li><strong>Steering:</strong> the train lays track automatically where it drives. You only choose left, straight or right at each tile. There is no separate build mode.</li>
+    <li><strong>View:</strong> top-down square tiles for the MVP. The OpenTTD isometric view comes later.</li>
+    <li><strong>Run:</strong> 10 minutes, then a boss (the Large UFO). Kill it to win.</li>
+    <li><strong>Self-collision:</strong> when the locomotive hits its own wagon, the train takes damage and stops for 1 second. It does not die.</li>
+    <li><strong>Engine:</strong> macroquad, with all game rules in a separate pure-Rust crate that has unit tests.</li>
+    <li><strong>Art:</strong> original programmer art. No OpenTTD or OpenGFX assets (they are GPL-2.0).</li>
+  </ol>
+</section>
+
+<nav class="toc" aria-label="Contents">
+  <ol>
+    <li><a href="#loop">Core loop</a></li>
+    <li><a href="#track">Train and track</a></li>
+    <li><a href="#enemies">Enemies and waves</a></li>
+    <li><a href="#upgrades">Wagons and upgrades</a></li>
+    <li><a href="#controls">Controls and screens</a></li>
+    <li><a href="#tech">Technical design</a></li>
+    <li><a href="#mise">Toolchain and tasks</a></li>
+    <li><a href="#mvp">MVP scope and commit plan</a></li>
+    <li><a href="#risks">Risks</a></li>
+  </ol>
+</nav>
+
+<section id="loop" aria-labelledby="h-loop">
+  <div class="sub"><span class="num">1</span><h2 id="h-loop">Core loop</h2></div>
+  <p>The loop is the same as in other survivors games. Weapons fire automatically. The player only moves. The difference is <em>how</em> the player moves: on rails, on a grid, with a train that gets longer when it gets stronger.</p>
+  <figure>
+    <div class="fig">
+      <svg viewBox="0 0 680 330" role="img" aria-labelledby="loop-t">
+        <title id="loop-t">Core loop: drive and lay track, ram and shoot, collect cargo, level up, longer and stronger train, back to drive. The spawn director adds more enemies over time.</title>
+        <defs>
+          <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" class="s-ink"/></marker>
+          <marker id="ar-d" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" class="s-dng"/></marker>
+        </defs>
+        <rect x="245" y="18" width="190" height="52" rx="4" class="s-box-acc"/>
+        <text x="340" y="40" text-anchor="middle" class="s-title">Drive and lay track</text>
+        <text x="340" y="58" text-anchor="middle" class="s-text-sm">pick left / straight / right</text>
+
+        <rect x="480" y="120" width="190" height="52" rx="4" class="s-box"/>
+        <text x="575" y="142" text-anchor="middle" class="s-title">Ram and shoot</text>
+        <text x="575" y="160" text-anchor="middle" class="s-text-sm">wagons fire on their own</text>
+
+        <rect x="400" y="250" width="190" height="52" rx="4" class="s-box"/>
+        <text x="495" y="272" text-anchor="middle" class="s-title">Collect cargo</text>
+        <text x="495" y="290" text-anchor="middle" class="s-text-sm">dead enemies drop crates (XP)</text>
+
+        <rect x="90" y="250" width="190" height="52" rx="4" class="s-box"/>
+        <text x="185" y="272" text-anchor="middle" class="s-title">Level up</text>
+        <text x="185" y="290" text-anchor="middle" class="s-text-sm">pick 1 of 3 cards</text>
+
+        <rect x="10" y="120" width="190" height="52" rx="4" class="s-box"/>
+        <text x="105" y="142" text-anchor="middle" class="s-title">Longer, stronger train</text>
+        <text x="105" y="160" text-anchor="middle" class="s-text-sm">new wagon or upgrade</text>
+
+        <path d="M435 52 C 520 60, 565 85, 572 116" class="s-line" marker-end="url(#ar)"/>
+        <path d="M570 172 C 565 210, 545 235, 530 248" class="s-line" marker-end="url(#ar)"/>
+        <path d="M400 276 L 284 276" class="s-line" marker-end="url(#ar)"/>
+        <path d="M150 250 C 130 225, 112 200, 108 176" class="s-line" marker-end="url(#ar)"/>
+        <path d="M110 120 C 120 80, 175 55, 241 48" class="s-line" marker-end="url(#ar)"/>
+
+        <rect x="265" y="140" width="150" height="52" rx="4" class="s-box-dng"/>
+        <text x="340" y="162" text-anchor="middle" class="s-title">Spawn director</text>
+        <text x="340" y="180" text-anchor="middle" class="s-text-sm">more enemies every minute</text>
+        <path d="M415 160 L 476 150" class="s-line-dng" marker-end="url(#ar-d)"/>
+      </svg>
+    </div>
+    <figcaption>The loop has one built-in tension. Each new wagon adds firepower, but it also makes the train longer, so it is harder to turn without hitting your own tail.</figcaption>
+  </figure>
+  <div class="cols">
+    <div>
+      <h3>Win and lose</h3>
+      <ul class="list-tight">
+        <li>The whole train shares one HP pool (start: 100 HP).</li>
+        <li>At 0 HP the run ends: "Train crashed".</li>
+        <li>At 10:00 the Large UFO arrives. Kill it to win.</li>
+      </ul>
+    </div>
+    <div>
+      <h3>One run</h3>
+      <ul class="list-tight">
+        <li>Fixed map, 64 × 64 tiles, random seed per run.</li>
+        <li>No meta progression in the MVP.</li>
+        <li>Expected: 25 to 35 level-ups per winning run.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section id="track" aria-labelledby="h-track">
+  <div class="sub"><span class="num">2</span><h2 id="h-track">Train and track</h2></div>
+  <p>This is the part that makes the game different. The rules come from OpenTTD: square tiles, track pieces that connect tile edges, trains that follow the pieces exactly. The survivors genre adds one change: the player does not build first and drive later. The locomotive builds as it drives.</p>
+
+  <h3>Track pieces</h3>
+  <p>Each tile stores its track as 6 bits, one bit per piece. This is the same idea as OpenTTD's <code>TrackBits</code>. A tile with more than one bit is a junction or a crossing.</p>
+  <figure>
+    <div class="fig">
+      <svg viewBox="0 0 700 150" role="img" aria-labelledby="pieces-t">
+        <title id="pieces-t">The six track pieces NS, EW, NE, ES, SW and WN, plus a junction (NS and NE) and a crossing (NS and EW).</title>
+        <g transform="translate(5,10)">
+          <rect width="80" height="80" class="s-grass"/><path d="M40 0 L40 80" class="s-ballast"/><path d="M40 0 L40 80" class="s-sleepers"/>
+          <text x="40" y="104" text-anchor="middle" class="s-mono">NS</text><text x="40" y="122" text-anchor="middle" class="s-text-sm">bit 0</text>
+        </g>
+        <g transform="translate(92,10)">
+          <rect width="80" height="80" class="s-grass"/><path d="M0 40 L80 40" class="s-ballast"/><path d="M0 40 L80 40" class="s-sleepers"/>
+          <text x="40" y="104" text-anchor="middle" class="s-mono">EW</text><text x="40" y="122" text-anchor="middle" class="s-text-sm">bit 1</text>
+        </g>
+        <g transform="translate(179,10)">
+          <rect width="80" height="80" class="s-grass"/><path d="M40 0 A40 40 0 0 0 80 40" class="s-ballast"/><path d="M40 0 A40 40 0 0 0 80 40" class="s-sleepers"/>
+          <text x="40" y="104" text-anchor="middle" class="s-mono">NE</text><text x="40" y="122" text-anchor="middle" class="s-text-sm">bit 2</text>
+        </g>
+        <g transform="translate(266,10)">
+          <rect width="80" height="80" class="s-grass"/><path d="M80 40 A40 40 0 0 0 40 80" class="s-ballast"/><path d="M80 40 A40 40 0 0 0 40 80" class="s-sleepers"/>
+          <text x="40" y="104" text-anchor="middle" class="s-mono">ES</text><text x="40" y="122" text-anchor="middle" class="s-text-sm">bit 3</text>
+        </g>
+        <g transform="translate(353,10)">
+          <rect width="80" height="80" class="s-grass"/><path d="M40 80 A40 40 0 0 0 0 40" class="s-ballast"/><path d="M40 80 A40 40 0 0 0 0 40" class="s-sleepers"/>
+          <text x="40" y="104" text-anchor="middle" class="s-mono">SW</text><text x="40" y="122" text-anchor="middle" class="s-text-sm">bit 4</text>
+        </g>
+        <g transform="translate(440,10)">
+          <rect width="80" height="80" class="s-grass"/><path d="M0 40 A40 40 0 0 0 40 0" class="s-ballast"/><path d="M0 40 A40 40 0 0 0 40 0" class="s-sleepers"/>
+          <text x="40" y="104" text-anchor="middle" class="s-mono">WN</text><text x="40" y="122" text-anchor="middle" class="s-text-sm">bit 5</text>
+        </g>
+        <g transform="translate(527,10)">
+          <rect width="80" height="80" class="s-grass"/>
+          <path d="M40 0 L40 80" class="s-ballast"/><path d="M40 0 A40 40 0 0 0 80 40" class="s-ballast"/>
+          <path d="M40 0 L40 80" class="s-sleepers"/><path d="M40 0 A40 40 0 0 0 80 40" class="s-sleepers"/>
+          <text x="40" y="104" text-anchor="middle" class="s-mono">NS|NE</text><text x="40" y="122" text-anchor="middle" class="s-text-sm">junction</text>
+        </g>
+        <g transform="translate(614,10)">
+          <rect width="80" height="80" class="s-grass"/>
+          <path d="M40 0 L40 80" class="s-ballast"/><path d="M0 40 L80 40" class="s-ballast"/>
+          <path d="M40 0 L40 80" class="s-sleepers"/><path d="M0 40 L80 40" class="s-sleepers"/>
+          <text x="40" y="104" text-anchor="middle" class="s-mono">NS|EW</text><text x="40" y="122" text-anchor="middle" class="s-text-sm">crossing</text>
+        </g>
+      </svg>
+    </div>
+    <figcaption>Pieces connect the midpoints of tile edges. A straight piece is 1 tile long. A curve is a quarter circle with radius ½ tile, so it is π/4 ≈ 0.785 tiles long. The MVP has no diagonal track and no slopes.</figcaption>
+  </figure>
+
+  <h3>Steering rule</h3>
+  <p>The locomotive always moves forward. When it enters a new tile, the game reads the turn key that is held at that moment and picks the exit edge. A ghost arrow on the next tile shows the exit before the train commits to it.</p>
+  <figure>
+    <div class="fig">
+      <svg viewBox="0 0 690 225" role="img" aria-labelledby="steer-t">
+        <title id="steer-t">Four steering cases. No key on empty ground builds straight. Right key on empty ground builds a curve. No key on existing track follows it. Left key on existing straight track builds a junction.</title>
+        <defs>
+          <marker id="ar-a" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 z" class="s-acc"/></marker>
+        </defs>
+        <g id="panelA" transform="translate(0,0)">
+          <rect width="150" height="150" class="s-grass"/>
+          <path d="M0 50 H150 M0 100 H150 M50 0 V150 M100 0 V150" class="s-grid"/>
+          <path d="M75 100 L75 150" class="s-ballast"/><path d="M75 100 L75 150" class="s-sleepers"/>
+          <path d="M75 50 L75 100" class="s-new"/>
+          <rect x="66" y="108" width="18" height="34" rx="2" class="s-acc"/>
+          <text x="75" y="172" text-anchor="middle" class="s-mono-acc">no key</text>
+          <text x="75" y="192" text-anchor="middle" class="s-text-sm">empty ground:</text>
+          <text x="75" y="208" text-anchor="middle" class="s-text-sm">build straight (slow)</text>
+        </g>
+        <g transform="translate(180,0)">
+          <rect width="150" height="150" class="s-grass"/>
+          <path d="M0 50 H150 M0 100 H150 M50 0 V150 M100 0 V150" class="s-grid"/>
+          <path d="M75 100 L75 150" class="s-ballast"/><path d="M75 100 L75 150" class="s-sleepers"/>
+          <path d="M75 100 A25 25 0 0 1 100 75" class="s-new"/>
+          <rect x="66" y="108" width="18" height="34" rx="2" class="s-acc"/>
+          <text x="75" y="172" text-anchor="middle" class="s-mono-acc">→ held</text>
+          <text x="75" y="192" text-anchor="middle" class="s-text-sm">empty ground:</text>
+          <text x="75" y="208" text-anchor="middle" class="s-text-sm">build curve (slow)</text>
+        </g>
+        <g transform="translate(360,0)">
+          <rect width="150" height="150" class="s-grass"/>
+          <path d="M0 50 H150 M0 100 H150 M50 0 V150 M100 0 V150" class="s-grid"/>
+          <path d="M75 100 L75 150" class="s-ballast"/><path d="M75 100 A25 25 0 0 0 50 75" class="s-ballast"/><path d="M0 75 L50 75" class="s-ballast"/>
+          <path d="M75 100 L75 150" class="s-sleepers"/><path d="M75 100 A25 25 0 0 0 50 75" class="s-sleepers"/><path d="M0 75 L50 75" class="s-sleepers"/>
+          <path d="M75 100 A25 25 0 0 0 50 75" class="s-route" marker-end="url(#ar-a)"/>
+          <rect x="66" y="108" width="18" height="34" rx="2" class="s-acc"/>
+          <text x="75" y="172" text-anchor="middle" class="s-mono-acc">no key</text>
+          <text x="75" y="192" text-anchor="middle" class="s-text-sm">existing track:</text>
+          <text x="75" y="208" text-anchor="middle" class="s-text-sm">follow it (fast)</text>
+        </g>
+        <g transform="translate(540,0)">
+          <rect width="150" height="150" class="s-grass"/>
+          <path d="M0 50 H150 M0 100 H150 M50 0 V150 M100 0 V150" class="s-grid"/>
+          <path d="M75 0 L75 150" class="s-ballast"/><path d="M75 0 L75 150" class="s-sleepers"/>
+          <path d="M75 100 A25 25 0 0 0 50 75" class="s-new"/>
+          <rect x="66" y="108" width="18" height="34" rx="2" class="s-acc"/>
+          <text x="75" y="172" text-anchor="middle" class="s-mono-acc">← held</text>
+          <text x="75" y="192" text-anchor="middle" class="s-text-sm">existing straight:</text>
+          <text x="75" y="208" text-anchor="middle" class="s-text-sm">add piece = junction</text>
+        </g>
+      </svg>
+    </div>
+    <figcaption>Blue dashes are new track that the train builds now. Brown is track that exists. The blue block is the locomotive, which drives north in all four cases.</figcaption>
+  </figure>
+
+  <div class="tbl">
+    <table>
+      <thead><tr><th>Rule</th><th>Value (start)</th><th>Why</th></tr></thead>
+      <tbody>
+        <tr><td>Speed on existing track</td><td class="n">5.0 tiles/s</td><td>Loops you built earlier become fast escape routes.</td></tr>
+        <tr><td>Speed while building</td><td class="n">2.5 tiles/s</td><td>New ground is risky. Your network is safe.</td></tr>
+        <tr><td>Weight per wagon</td><td class="n">−3 % speed</td><td>OpenTTD tractive effort, in one number.</td></tr>
+        <tr><td>Blocked exit (water, map edge)</td><td>Try straight, then the other turn</td><td>The train never drives into a wall.</td></tr>
+        <tr><td>Dead end, all exits blocked</td><td>Stop, then reverse</td><td>OpenTTD trains also reverse at dead ends.</td></tr>
+        <tr><td>Reverse key</td><td class="n">0.5 s stop</td><td>Escape from a trap. The last wagon becomes the front.</td></tr>
+        <tr><td>Hit own wagon</td><td class="n">−20 HP, 1 s stop</td><td>Long trains need planning. One mistake does not end the run.</td></tr>
+        <tr><td>Ram enemy with locomotive</td><td class="n">10 × speed dmg</td><td>Speed is a weapon. Each enemy is hit once per 0.5 s.</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>How wagons follow the locomotive</h3>
+  <p>The locomotive keeps a <em>trail</em>: the list of track pieces it drove over, newest first. Its position is one number, <code>s</code>, the distance it travelled. Wagon <code>i</code> is at distance <code>s − i·g</code> on the same trail, with gap <code>g = 0.9</code> tiles. The game finds the piece that contains that distance and computes the point on the straight line or the arc. So wagons always stay on the rails, also on curves and junctions. The trail drops pieces that are behind the last wagon. To reverse, the game flips the trail.</p>
+  <div class="sketch">
+    <canvas id="sketch" width="480" height="288" aria-label="Animated sketch: a locomotive and wagons follow a loop of track. Each car is labelled with its trail distance."></canvas>
+    <div class="controls">
+      <button id="play" type="button">Play</button>
+      <label for="wagons">Wagons <input id="wagons" type="range" min="1" max="5" value="3"></label>
+      <span class="muted" id="sval">s = 0.00 tiles</span>
+    </div>
+  </div>
+  <p class="muted" style="font-size:14.5px">Live sketch of the trail rule. The blue band is the part of the trail the train uses now. The spur at the bottom is a junction with a buffer stop. Change the number of wagons to see the train get longer.</p>
+</section>
+
+<section id="enemies" aria-labelledby="h-enemies">
+  <div class="sub"><span class="num">3</span><h2 id="h-enemies">Enemies and waves</h2></div>
+  <p>The enemies come from the OpenTTD world. Angry residents do not like your noise. A rival company sends its buses. The UFO disasters from OpenTTD hunt your train. Enemies move freely over the map. They do not need track.</p>
+  <div class="tbl">
+    <table>
+      <thead><tr><th>Enemy</th><th>From</th><th>HP</th><th>Speed</th><th>Behaviour</th><th>XP</th></tr></thead>
+      <tbody>
+        <tr><td>Angry resident</td><td class="n">0:00</td><td class="n">10</td><td class="n">1.2 t/s</td><td>Walks to the nearest car. Comes in large groups. Touch damage 5.</td><td class="n">1</td></tr>
+        <tr><td>Rival bus</td><td class="n">2:00</td><td class="n">30</td><td class="n">3.0 t/s</td><td>Stops, shows a line for 1 s, then charges in a straight line. Touch damage 15.</td><td class="n">3</td></tr>
+        <tr><td>Small UFO</td><td class="n">5:00, 8:00</td><td class="n">250</td><td class="n">1.5 t/s</td><td>Flies to the locomotive. Fires a slow plasma ball every 3 s. Mini-boss.</td><td class="n">25</td></tr>
+        <tr><td>Large UFO (boss)</td><td class="n">10:00</td><td class="n">3000</td><td class="n">0.8 t/s</td><td>Removes the track under it. Calls groups of residents. Kill it to win.</td><td class="n">–</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <figure>
+    <div class="fig">
+      <svg viewBox="0 0 660 280" role="img" aria-labelledby="wave-t">
+        <title id="wave-t">Maximum enemies alive over time. 20 at the start, 60 at 2 minutes, 150 at 5 minutes, 300 at 10 minutes. Buses join at 2:00, Small UFOs at 5:00 and 8:00, the Large UFO boss at 10:00.</title>
+        <path d="M60 20 H620 M60 80 H620 M60 140 H620" class="s-grid"/>
+        <path d="M60 200 L60 188 L116 179 L172 164 L228 149 L284 128 L340 110 L396 86 L452 68 L508 50 L564 32 L620 20 L620 200 Z" class="s-area"/>
+        <path d="M60 188 L116 179 L172 164 L228 149 L284 128 L340 110 L396 86 L452 68 L508 50 L564 32 L620 20" class="s-curve"/>
+        <circle cx="620" cy="20" r="4" class="s-acc"/>
+        <path d="M60 200 H620" class="s-line"/>
+        <text x="52" y="204" text-anchor="end" class="s-mono">0</text>
+        <text x="52" y="144" text-anchor="end" class="s-mono">100</text>
+        <text x="52" y="84" text-anchor="end" class="s-mono">200</text>
+        <text x="52" y="24" text-anchor="end" class="s-mono">300</text>
+        <g class="s-mono" text-anchor="middle">
+          <text x="60" y="218" class="s-mono">0</text><text x="172" y="218" class="s-mono">2</text><text x="284" y="218" class="s-mono">4</text>
+          <text x="396" y="218" class="s-mono">6</text><text x="508" y="218" class="s-mono">8</text><text x="620" y="218" class="s-mono">10 min</text>
+        </g>
+        <path d="M172 200 V232 M340 200 V232 M508 200 V232 M620 200 V232" class="s-line-dng"/>
+        <circle cx="172" cy="240" r="4" class="s-dng"/><text x="180" y="244" class="s-text-sm">buses join</text>
+        <circle cx="340" cy="240" r="4" class="s-dng"/><text x="348" y="244" class="s-text-sm">Small UFO</text>
+        <circle cx="508" cy="240" r="4" class="s-dng"/><text x="500" y="244" text-anchor="end" class="s-text-sm">Small UFO ×2</text>
+        <circle cx="620" cy="240" r="4" class="s-dng"/><text x="612" y="264" text-anchor="end" class="s-text-sm">Large UFO (boss)</text>
+        <text x="70" y="16" class="s-text-sm">enemies alive (cap)</text>
+      </svg>
+    </div>
+    <figcaption>The spawn director keeps the number of live enemies near the cap. It spawns them in a ring 12 to 16 tiles from the locomotive, just outside the screen. Enemy HP grows by 8 % per minute. The numbers are first guesses and will change in play tests.</figcaption>
+  </figure>
+</section>
+
+<section id="upgrades" aria-labelledby="h-up">
+  <div class="sub"><span class="num">4</span><h2 id="h-up">Wagons and upgrades</h2></div>
+  <p>Wagons are the weapons. The locomotive pulls up to 5 of them. Engine upgrades are the passive items. Each level-up shows 3 random cards from the pool: a new wagon (if a slot is free), a level for a wagon you have, or a level for an engine upgrade. Every item has 5 levels. When everything is at level 5, the card is "Repair: +30 HP".</p>
+  <div class="tbl">
+    <table>
+      <thead><tr><th>Wagon (weapon)</th><th>Level 1</th><th>Levels 2 to 5 add</th><th>MVP</th></tr></thead>
+      <tbody>
+        <tr><td>Armoured wagon</td><td>Shoots the nearest enemy in 6 tiles. 10 dmg, 1 shot/s.</td><td>damage, fire rate, +1 bullet, pierce</td><td><span class="tag in">in</span></td></tr>
+        <tr><td>Coal hopper</td><td>Drops burning coal on each tile it passes. 8 dmg/s for 4 s.</td><td>duration, damage, burns adjacent tiles</td><td><span class="tag in">in</span></td></tr>
+        <tr><td>Steam wagon</td><td>Every 4 s, a steam blast in 2.5 tiles. 15 dmg and push back.</td><td>radius, damage, shorter cooldown</td><td><span class="tag in">in</span></td></tr>
+        <tr><td>Mail van</td><td>Letters that home in on enemies.</td><td>count, speed</td><td><span class="tag out">later</span></td></tr>
+        <tr><td>Oil tanker</td><td>Flame cones to both sides.</td><td>length, damage</td><td><span class="tag out">later</span></td></tr>
+        <tr><td>Crane wagon</td><td>A boom that turns around the wagon.</td><td>reach, speed</td><td><span class="tag out">later</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="note">The coal hopper connects the weapon system to the track system. It turns your rails into a damage zone. A tight loop with two hoppers becomes a ring of fire. This is the kind of synergy that only a train game can have.</p>
+  <div class="tbl">
+    <table>
+      <thead><tr><th>Engine upgrade (passive)</th><th>Per level</th><th>MVP</th></tr></thead>
+      <tbody>
+        <tr><td>Boiler pressure</td><td>−10 % weapon cooldown</td><td><span class="tag in">in</span></td></tr>
+        <tr><td>Heavy rails</td><td>+10 % train speed</td><td><span class="tag in">in</span></td></tr>
+        <tr><td>Armour plating</td><td>+20 max HP, heal 20</td><td><span class="tag in">in</span></td></tr>
+        <tr><td>Cargo hook</td><td>+30 % pickup radius (start: 1.5 tiles)</td><td><span class="tag in">in</span></td></tr>
+        <tr><td>Track gang</td><td>+15 % building speed</td><td><span class="tag out">later</span></td></tr>
+        <tr><td>Cowcatcher</td><td>+50 % ram damage</td><td><span class="tag out">later</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p>XP: each crate holds the XP value of its enemy (see the enemy table). Level <code>n</code> needs <code>5 + 4·n</code> XP. The first level-up comes after about 5 kills. The game pauses while the cards show.</p>
+  <p class="muted">Later idea: OpenTTD eras as evolutions. A level-5 wagon plus a level-5 upgrade changes the locomotive from steam to diesel, electric, monorail and maglev.</p>
+</section>
+
+<section id="controls" aria-labelledby="h-ctl">
+  <div class="sub"><span class="num">5</span><h2 id="h-ctl">Controls and screens</h2></div>
+  <div class="cols">
+    <div>
+      <div class="tbl">
+        <table>
+          <thead><tr><th>Action</th><th>Keyboard</th></tr></thead>
+          <tbody>
+            <tr><td>Turn left at next tile</td><td><kbd>A</kbd> or <kbd>←</kbd></td></tr>
+            <tr><td>Turn right at next tile</td><td><kbd>D</kbd> or <kbd>→</kbd></td></tr>
+            <tr><td>Straight / follow track</td><td>no key</td></tr>
+            <tr><td>Reverse</td><td><kbd>S</kbd> or <kbd>↓</kbd></td></tr>
+            <tr><td>Pick card</td><td><kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd> or click</td></tr>
+            <tr><td>Pause</td><td><kbd>Esc</kbd> or <kbd>P</kbd></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="muted" style="font-size:14.5px">Turns are relative to the train, not to the screen. This is the same as in Snake, and it works with two keys. Touch (tap the left or right half of the screen) comes after the MVP.</p>
+    </div>
+    <figure>
+      <div class="fig" style="padding:8px">
+        <svg viewBox="0 0 640 360" role="img" aria-labelledby="hud-t" style="min-width:0">
+          <title id="hud-t">HUD layout: XP bar on top, HP bar top left, timer top centre, level top right, wagon slots bottom left. The train is in the centre with a ghost arrow on the next tile.</title>
+          <rect width="640" height="360" class="s-grass"/>
+          <rect x="420" y="230" width="140" height="90" rx="30" class="s-water"/>
+          <rect x="0" y="0" width="640" height="10" class="s-paper"/>
+          <rect x="0" y="0" width="390" height="10" class="s-acc"/>
+          <rect x="16" y="22" width="160" height="16" class="s-paper"/>
+          <rect x="16" y="22" width="112" height="16" class="s-dng"/>
+          <text x="22" y="35" class="s-mono">HP 70/100</text>
+          <text x="320" y="38" text-anchor="middle" class="s-title" style="font-size:20px">07:42</text>
+          <text x="624" y="36" text-anchor="end" class="s-title">Lv 12</text>
+          <path d="M120 180 H320 V110" class="s-ballast"/><path d="M120 180 H320 V110" class="s-sleepers"/>
+          <path d="M320 110 V80" class="s-new"/>
+          <path d="M320 104 L320 82" class="s-route" marker-end="url(#ar-a)"/>
+          <rect x="312" y="112" width="16" height="30" rx="2" class="s-acc"/>
+          <rect x="312" y="146" width="16" height="26" rx="2" class="s-steel"/>
+          <rect x="294" y="172" width="26" height="16" rx="2" class="s-steel"/>
+          <rect x="262" y="172" width="26" height="16" rx="2" class="s-cargo"/>
+          <g class="s-dng">
+            <circle cx="380" cy="120" r="6"/><circle cx="395" cy="135" r="6"/><circle cx="372" cy="146" r="6"/>
+            <circle cx="240" cy="90" r="6"/><circle cx="255" cy="80" r="6"/><circle cx="420" cy="190" r="6"/>
+            <circle cx="180" cy="250" r="6"/><circle cx="200" cy="262" r="6"/>
+          </g>
+          <rect x="230" y="210" width="9" height="9" class="s-cargo"/><rect x="350" y="200" width="9" height="9" class="s-cargo"/>
+          <g>
+            <rect x="16" y="318" width="30" height="30" class="s-paper"/><rect x="52" y="318" width="30" height="30" class="s-paper"/>
+            <rect x="88" y="318" width="30" height="30" class="s-paper"/><rect x="124" y="318" width="30" height="30" class="s-bg"/>
+            <rect x="160" y="318" width="30" height="30" class="s-bg"/>
+            <text x="31" y="338" text-anchor="middle" class="s-mono">G3</text><text x="67" y="338" text-anchor="middle" class="s-mono">C1</text>
+            <text x="103" y="338" text-anchor="middle" class="s-mono">S2</text>
+          </g>
+          <text x="624" y="342" text-anchor="end" class="s-mono">kills 812</text>
+        </svg>
+      </div>
+      <figcaption>HUD. Screens: title, run, level-up cards (paused), pause, game over, win.</figcaption>
+    </figure>
+  </div>
+</section>
+
+<section id="tech" aria-labelledby="h-tech">
+  <div class="sub"><span class="num">6</span><h2 id="h-tech">Technical design</h2></div>
+  <h3>Engine choice</h3>
+  <div class="tbl">
+    <table>
+      <thead><tr><th>Option</th><th>Good</th><th>Bad</th><th></th></tr></thead>
+      <tbody>
+        <tr><td><strong>macroquad 0.4.16</strong></td><td>Builds to <code>wasm32-unknown-unknown</code> with no wasm-bindgen. Small wasm (about 1 MB). Same code runs natively for fast tests. Simple immediate-mode drawing.</td><td>No ECS, small ecosystem, single thread. None of this matters for this game.</td><td><span class="tag rec">recommended</span></td></tr>
+        <tr><td>Bevy</td><td>ECS, big ecosystem, good tools.</td><td>Long compile times. Wasm is 10 MB or more. Too much for a small 2D game.</td><td></td></tr>
+        <tr><td>wasm-bindgen + Canvas 2D</td><td>Full control, no engine.</td><td>Much glue code. No native build. Slow for many sprites.</td><td></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>Architecture</h3>
+  <figure>
+    <div class="fig">
+      <svg viewBox="0 0 680 270" role="img" aria-labelledby="arch-t">
+        <title id="arch-t">Architecture: the browser loads index.html, which loads the macroquad JS loader and game.wasm. game.wasm is built from the game crate. The game crate calls the sim crate. cargo run uses the game crate natively. cargo test tests the sim crate.</title>
+        <defs><marker id="ar2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L10 5 L0 10 z" class="s-ink"/></marker></defs>
+        <text x="20" y="18" class="s-text-sm">Browser</text>
+        <rect x="20" y="28" width="180" height="40" rx="3" class="s-box"/><text x="110" y="53" text-anchor="middle" class="s-mono">index.html</text>
+        <rect x="20" y="88" width="180" height="52" rx="3" class="s-box"/><text x="110" y="110" text-anchor="middle" class="s-mono">mq_js_bundle.js</text><text x="110" y="128" text-anchor="middle" class="s-text-sm">WebGL, input, audio glue</text>
+        <rect x="20" y="160" width="180" height="40" rx="3" class="s-box-acc"/><text x="110" y="185" text-anchor="middle" class="s-mono">game.wasm</text>
+        <path d="M110 68 V84" class="s-line" marker-end="url(#ar2)"/><path d="M110 140 V156" class="s-line" marker-end="url(#ar2)"/>
+
+        <rect x="260" y="60" width="190" height="130" rx="3" class="s-box-acc"/>
+        <text x="355" y="84" text-anchor="middle" class="s-title">crate game (bin)</text>
+        <text x="275" y="110" class="s-text-sm">macroquad main loop</text>
+        <text x="275" y="130" class="s-text-sm">keys → sim::Input</text>
+        <text x="275" y="150" class="s-text-sm">draw map, train, HUD</text>
+        <text x="275" y="170" class="s-text-sm">screens and menus</text>
+
+        <rect x="500" y="60" width="165" height="130" rx="3" class="s-box"/>
+        <text x="582" y="84" text-anchor="middle" class="s-title">crate sim (lib)</text>
+        <text x="514" y="110" class="s-text-sm">World::step(input)</text>
+        <text x="514" y="130" class="s-text-sm">track, train, enemies</text>
+        <text x="514" y="150" class="s-text-sm">weapons, upgrades</text>
+        <text x="514" y="170" class="s-text-sm">no platform code</text>
+
+        <path d="M200 180 L256 160" class="s-line" marker-end="url(#ar2)"/><text x="206" y="210" class="s-text-sm">built from</text>
+        <path d="M450 112 L496 112" class="s-line" marker-end="url(#ar2)"/><text x="452" y="104" class="s-text-sm">step()</text>
+        <path d="M496 140 L454 140" class="s-line" marker-end="url(#ar2)"/><text x="452" y="156" class="s-text-sm">read</text>
+
+        <rect x="260" y="222" width="190" height="36" rx="3" class="s-box"/><text x="355" y="245" text-anchor="middle" class="s-mono">cargo run (native)</text>
+        <path d="M355 222 V194" class="s-line" marker-end="url(#ar2)"/>
+        <rect x="500" y="222" width="165" height="36" rx="3" class="s-box"/><text x="582" y="245" text-anchor="middle" class="s-mono">cargo test</text>
+        <path d="M582 222 V194" class="s-line" marker-end="url(#ar2)"/>
+      </svg>
+    </div>
+    <figcaption>All game rules live in <code>sim</code>. It has no macroquad dependency, so <code>cargo test</code> runs fast and natively. The <code>game</code> crate only translates input, draws and plays the screens.</figcaption>
+  </figure>
+
+  <h3>One simulation step</h3>
+  <p>The simulation runs at a fixed 60 steps per second. The render loop runs as fast as the browser allows and does at most 5 steps per frame, so a slow frame does not freeze the game. Each step does these operations in this order:</p>
+  <ol class="list-tight">
+    <li>Read input. Latch the turn key for the next tile.</li>
+    <li>Move the train. Pick exits, build track, update the trail, detect self-collision.</li>
+    <li>Spawn director: add enemies up to the cap for the current minute.</li>
+    <li>Move enemies: seek the nearest car, plus separation from neighbours (spatial hash).</li>
+    <li>Fire weapons whose cooldown is done. Move projectiles. Tick coal fires.</li>
+    <li>Resolve hits and touch damage. Remove dead enemies and drop crates.</li>
+    <li>Pull crates in the pickup radius. Add XP. If a level is reached, change the state to <code>LevelUp</code> and roll 3 cards.</li>
+  </ol>
+
+  <h3>Core data</h3>
+<pre><code>// sim/src/track.rs
+// track bits per tile (u8): NS=1 EW=2 NE=4 ES=8 SW=16 WN=32
+pub struct TileMap { w: u16, h: u16, terrain: Vec&lt;Terrain&gt;, track: Vec&lt;u8&gt; }
+
+// sim/src/train.rs
+pub struct Piece { tile: (u16, u16), entry: Dir, exit: Dir }   // one tile of the trail
+pub struct Train {
+    trail: VecDeque&lt;Piece&gt;,   // newest at front
+    s: f32,                   // distance travelled on the front piece
+    cars: Vec&lt;Car&gt;,           // [0] = locomotive, then wagons
+    hp: f32, speed: f32,
+}
+
+// sim/src/world.rs
+pub struct World {
+    map: TileMap, train: Train,
+    enemies: Vec&lt;Enemy&gt;, shots: Vec&lt;Shot&gt;, crates: Vec&lt;Crate&gt;, fires: Vec&lt;Fire&gt;,
+    rng: Pcg32, time: f32, state: State,       // Running | LevelUp([Card; 3]) | Lost | Won
+}
+impl World { pub fn step(&amp;mut self, input: &amp;Input) { /* order above */ } }</code></pre>
+  <div class="cols">
+    <div>
+      <h3>Budgets</h3>
+      <ul class="list-tight">
+        <li>500 enemies and 300 shots at 60 fps in a browser on a normal laptop.</li>
+        <li>Release wasm under 2 MB.</li>
+        <li>Plain <code>Vec</code> plus <code>swap_remove</code>. No ECS.</li>
+        <li>Spatial hash with one bucket per tile for enemy neighbours and hits.</li>
+      </ul>
+    </div>
+    <div>
+      <h3>Tests in <code>sim</code></h3>
+      <ul class="list-tight">
+        <li>Track bits: connect, junction, crossing.</li>
+        <li>Trail: car positions on straights and curves, trail trim, reverse.</li>
+        <li>Speed: build speed versus existing track.</li>
+        <li>Same seed gives the same run (determinism).</li>
+        <li>Card pool: no maxed items, no wagon when slots are full.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section id="mise" aria-labelledby="h-mise">
+  <div class="sub"><span class="num">7</span><h2 id="h-mise">Toolchain and tasks</h2></div>
+  <p>mise installs every tool and runs every task. A new contributor runs <code>mise install</code> and then <code>mise run serve</code>. Nothing else is necessary. Exact tool versions get pinned in the first scaffold commit.</p>
+<pre><code># mise.toml
+[tools]
+rust = { version = "1.99", targets = "wasm32-unknown-unknown", components = "clippy,rustfmt" }
+miniserve = "&lt;pin&gt;"      # static file server for dist/
+watchexec = "&lt;pin&gt;"      # used by `mise watch`
+
+[tasks.run]
+description = "Run the game natively"
+run = "cargo run -p game"
+
+[tasks.test]
+run = "cargo test --workspace"
+
+[tasks.fmt]
+run = "cargo fmt --all"
+
+[tasks.lint]
+run = ["cargo fmt --all --check", "cargo clippy --workspace --all-targets -- -D warnings"]
+
+[tasks."build:web"]
+description = "Build the wasm bundle into dist/"
+sources = ["crates/**/*.rs", "Cargo.*", "web/*"]
+outputs = ["dist/game.wasm"]
+run = [
+  "cargo build -p game --release --target wasm32-unknown-unknown",
+  "mkdir -p dist",
+  "cp target/wasm32-unknown-unknown/release/game.wasm web/index.html web/mq_js_bundle.js dist/",
+]
+
+[tasks.serve]
+depends = ["build:web"]
+run = "miniserve --index index.html dist"
+
+[tasks.dev]
+description = "Rebuild on change (run `serve` in a second terminal)"
+run = "mise watch build:web"
+
+[tasks.ci]
+depends = ["lint", "test", "build:web"]</code></pre>
+  <figure>
+    <div class="fig">
+      <svg viewBox="0 0 640 200" role="img" aria-labelledby="task-t">
+        <title id="task-t">Task graph: lint, test and build:web feed ci. build:web feeds serve. dev watches and runs build:web. run is native and stands alone.</title>
+        <defs><marker id="ar3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L10 5 L0 10 z" class="s-ink"/></marker></defs>
+        <rect x="20" y="20" width="120" height="36" rx="3" class="s-box"/><text x="80" y="43" text-anchor="middle" class="s-mono">lint</text>
+        <rect x="20" y="82" width="120" height="36" rx="3" class="s-box"/><text x="80" y="105" text-anchor="middle" class="s-mono">test</text>
+        <rect x="20" y="144" width="120" height="36" rx="3" class="s-box-acc"/><text x="80" y="167" text-anchor="middle" class="s-mono">build:web</text>
+        <rect x="260" y="82" width="120" height="36" rx="3" class="s-box"/><text x="320" y="105" text-anchor="middle" class="s-mono">ci</text>
+        <rect x="260" y="144" width="120" height="36" rx="3" class="s-box"/><text x="320" y="167" text-anchor="middle" class="s-mono">serve</text>
+        <rect x="480" y="144" width="140" height="36" rx="3" class="s-box"/><text x="550" y="167" text-anchor="middle" class="s-mono">dev (watch)</text>
+        <rect x="480" y="20" width="140" height="36" rx="3" class="s-box"/><text x="550" y="43" text-anchor="middle" class="s-mono">run (native)</text>
+        <path d="M140 38 L256 94" class="s-line" marker-end="url(#ar3)"/>
+        <path d="M140 100 L256 100" class="s-line" marker-end="url(#ar3)"/>
+        <path d="M140 156 L256 108" class="s-line" marker-end="url(#ar3)"/>
+        <path d="M140 168 L256 168" class="s-line" marker-end="url(#ar3)"/>
+        <path d="M480 162 C 440 192, 200 200, 144 176" class="s-line-dng" marker-end="url(#ar-d)"/>
+        <text x="150" y="124" class="s-text-sm">depends</text>
+        <text x="400" y="196" class="s-text-sm">re-runs on change</text>
+      </svg>
+    </div>
+  </figure>
+  <h3>Repository layout</h3>
+<pre><code>transport-survivors/
+├── mise.toml
+├── Cargo.toml            # workspace; release profile: opt-level=3, lto="thin"
+├── crates/
+│   ├── sim/              # pure rules + unit tests
+│   └── game/             # macroquad binary (native and wasm)
+├── web/
+│   ├── index.html        # canvas + loader
+│   └── mq_js_bundle.js   # vendored from miniquad, same version as the crate
+├── docs/
+│   └── design.html       # this document
+└── dist/                 # build output, git-ignored</code></pre>
+  <p class="muted">The JS loader must match the miniquad version that macroquad uses. The scaffold commit vendors it with its licence header. Later: a CI workflow with <code>jdx/mise-action</code> that runs <code>mise run ci</code> and deploys <code>dist/</code> to GitHub Pages.</p>
+</section>
+
+<section id="mvp" aria-labelledby="h-mvp">
+  <div class="sub"><span class="num">8</span><h2 id="h-mvp">MVP scope and commit plan</h2></div>
+  <div class="cols">
+    <div>
+      <h3>In the MVP</h3>
+      <ul class="list-tight">
+        <li>64 × 64 map with grass, lakes and a map edge.</li>
+        <li>Auto-built track, turns, junctions, crossings, reverse.</li>
+        <li>Locomotive and up to 5 wagons on one trail.</li>
+        <li>3 wagons, 4 engine upgrades, level-up cards.</li>
+        <li>Residents, buses, Small UFO, Large UFO boss.</li>
+        <li>HUD and all six screens.</li>
+        <li>Native and browser builds through mise.</li>
+        <li>Unit tests for the <code>sim</code> crate.</li>
+      </ul>
+    </div>
+    <div>
+      <h3>After the MVP</h3>
+      <ul class="list-tight">
+        <li>Isometric view and sprites.</li>
+        <li>Sound and music.</li>
+        <li>Touch controls.</li>
+        <li>Stations, money and a shop between runs.</li>
+        <li>Saboteurs, zeppelins, subsidence.</li>
+        <li>Era evolutions, more wagons.</li>
+        <li>High score in local storage.</li>
+        <li>CI and GitHub Pages deploy.</li>
+      </ul>
+    </div>
+  </div>
+  <p>The build thread commits on <code>main</code>, one logical step per commit, with Conventional Commits. The game is playable after commit 4. This lets us test the steering feel early, which is the biggest risk.</p>
+  <div class="tbl">
+    <table>
+      <thead><tr><th>#</th><th>Commit</th><th>Result</th></tr></thead>
+      <tbody>
+        <tr><td class="n">1</td><td><code>build: add mise toolchain and cargo workspace</code></td><td>Empty window, native and in the browser.</td></tr>
+        <tr><td class="n">2</td><td><code>feat(sim): add tile map and track pieces</code></td><td>Track bits, terrain, tests.</td></tr>
+        <tr><td class="n">3</td><td><code>feat(sim): move train along its trail</code></td><td>Steering, building, wagons, reverse, tests.</td></tr>
+        <tr><td class="n">4</td><td><code>feat(game): draw map and train, follow with camera</code></td><td>Drivable train. First feel test.</td></tr>
+        <tr><td class="n">5</td><td><code>feat(sim): add enemies and spawn director</code></td><td>Residents and buses, touch damage, ram.</td></tr>
+        <tr><td class="n">6</td><td><code>feat(sim): add wagon weapons</code></td><td>Armoured wagon, coal hopper, steam wagon.</td></tr>
+        <tr><td class="n">7</td><td><code>feat(sim): add cargo, XP and level-up cards</code></td><td>Upgrades and the card pool.</td></tr>
+        <tr><td class="n">8</td><td><code>feat(sim): add UFO mini-boss and boss</code></td><td>Win condition.</td></tr>
+        <tr><td class="n">9</td><td><code>feat(game): add HUD and screens</code></td><td>Complete MVP.</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section id="risks" aria-labelledby="h-risks">
+  <div class="sub"><span class="num">9</span><h2 id="h-risks">Risks</h2></div>
+  <div class="tbl">
+    <table class="risk">
+      <thead><tr><th>Risk</th><th>Effect</th><th>What we do</th></tr></thead>
+      <tbody>
+        <tr><td>Steering feels stiff</td><td>Tile-by-tile turns are slower than free movement.</td><td>Ghost arrow, key latch, fast speed on own track. Test at commit 4. Fall back to 2× smaller tiles if necessary.</td></tr>
+        <tr><td>Long trains trap themselves</td><td>Frustration late in the run.</td><td>Damage, not death. Reverse key. Max 5 wagons.</td></tr>
+        <tr><td>Track fills the map</td><td>Building speed stops mattering.</td><td>Acceptable for 10 minutes. The boss removes track. Later: old track decays.</td></tr>
+        <tr><td>Loader version mismatch</td><td>Blank page in the browser.</td><td>Vendor the JS loader from the same miniquad version. Smoke-test <code>serve</code> in commit 1.</td></tr>
+        <tr><td>Licence</td><td>OpenTTD art is GPL-2.0.</td><td>Original art only. No OpenTTD name in the game title.</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+</main>
+
+<script>
+(() => {
+  const cv = document.getElementById('sketch');
+  if (!cv) return;
+  const ctx = cv.getContext('2d');
+  const COLS = 10, ROWS = 6;
+  const OPP = { N: 'S', S: 'N', E: 'W', W: 'E' };
+  const MID = { N: [0.5, 0], E: [1, 0.5], S: [0.5, 1], W: [0, 0.5] };
+  const CORNER = { NE: [1, 0], EN: [1, 0], ES: [1, 1], SE: [1, 1], SW: [0, 1], WS: [0, 1], WN: [0, 0], NW: [0, 0] };
+  const GAP = 0.9, SPEED = 2.2;
+
+  const loopTiles = [];
+  for (let x = 1; x <= 8; x++) loopTiles.push([x, 1]);
+  for (let y = 2; y <= 4; y++) loopTiles.push([8, y]);
+  for (let x = 7; x >= 1; x--) loopTiles.push([x, 4]);
+  for (let y = 3; y >= 2; y--) loopTiles.push([1, y]);
+  const dirOf = (a, b) => b[0] > a[0] ? 'E' : b[0] < a[0] ? 'W' : b[1] > a[1] ? 'S' : 'N';
+  const n = loopTiles.length;
+  const loop = loopTiles.map((t, i) => {
+    const prev = loopTiles[(i - 1 + n) % n], next = loopTiles[(i + 1) % n];
+    return { x: t[0], y: t[1], a: OPP[dirOf(prev, t)], b: dirOf(t, next) };
+  });
+  const spur = [{ x: 5, y: 4, a: 'E', b: 'S' }, { x: 5, y: 5, a: 'N', b: 'S' }];
+  const isStraight = p => OPP[p.a] === p.b;
+  const len = p => isStraight(p) ? 1 : Math.PI / 4;
+  const cum = []; let total = 0;
+  loop.forEach(p => { cum.push(total); total += len(p); });
+
+  function pointOn(p, u) {
+    const p0 = [p.x + MID[p.a][0], p.y + MID[p.a][1]], p1 = [p.x + MID[p.b][0], p.y + MID[p.b][1]];
+    if (isStraight(p)) {
+      return { x: p0[0] + (p1[0] - p0[0]) * u, y: p0[1] + (p1[1] - p0[1]) * u, h: Math.atan2(p1[1] - p0[1], p1[0] - p0[0]) };
+    }
+    const c = CORNER[p.a + p.b], cx = p.x + c[0], cy = p.y + c[1];
+    const a0 = Math.atan2(p0[1] - cy, p0[0] - cx);
+    let d = Math.atan2(p1[1] - cy, p1[0] - cx) - a0;
+    while (d > Math.PI) d -= 2 * Math.PI;
+    while (d < -Math.PI) d += 2 * Math.PI;
+    const a = a0 + d * u;
+    return { x: cx + 0.5 * Math.cos(a), y: cy + 0.5 * Math.sin(a), h: a + Math.sign(d) * Math.PI / 2 };
+  }
+  function at(s) {
+    s = ((s % total) + total) % total;
+    let i = 0;
+    while (i < loop.length - 1 && cum[i + 1] <= s) i++;
+    return pointOn(loop[i], (s - cum[i]) / len(loop[i]));
+  }
+  function piecePath(p, T) {
+    const p0 = [(p.x + MID[p.a][0]) * T, (p.y + MID[p.a][1]) * T];
+    ctx.beginPath();
+    ctx.moveTo(p0[0], p0[1]);
+    for (let k = 1; k <= 12; k++) { const q = pointOn(p, k / 12); ctx.lineTo(q.x * T, q.y * T); }
+  }
+
+  let s = 6.3, playing = false, last = 0;
+  const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const wagonsEl = document.getElementById('wagons');
+  const playEl = document.getElementById('play');
+  const sval = document.getElementById('sval');
+
+  function size() {
+    const dpr = window.devicePixelRatio || 1;
+    const w = cv.clientWidth || 480;
+    cv.width = Math.round(w * dpr);
+    cv.height = Math.round(w * ROWS / COLS * dpr);
+    draw();
+  }
+  function draw() {
+    const css = getComputedStyle(document.documentElement);
+    const v = k => css.getPropertyValue(k).trim();
+    const T = cv.width / COLS;
+    ctx.clearRect(0, 0, cv.width, cv.height);
+    for (let y = 0; y < ROWS; y++) for (let x = 0; x < COLS; x++) {
+      ctx.fillStyle = (x + y) % 2 ? v('--grass') : v('--grass-2');
+      ctx.fillRect(x * T, y * T, T, T);
+    }
+    ctx.fillStyle = v('--water');
+    ctx.beginPath(); ctx.ellipse(3.6 * T, 2.5 * T, 1.3 * T, 0.6 * T, 0, 0, 2 * Math.PI); ctx.fill();
+    ctx.lineCap = 'butt';
+    const pieces = loop.concat(spur);
+    pieces.forEach(p => { piecePath(p, T); ctx.strokeStyle = v('--ballast'); ctx.lineWidth = T * 0.36; ctx.setLineDash([]); ctx.stroke(); });
+    pieces.forEach(p => { piecePath(p, T); ctx.strokeStyle = v('--sleeper'); ctx.lineWidth = T * 0.28; ctx.setLineDash([T * 0.06, T * 0.12]); ctx.stroke(); });
+    ctx.setLineDash([]);
+    ctx.fillStyle = v('--danger');
+    ctx.fillRect(5.3 * T, 5.82 * T, 0.4 * T, 0.1 * T);
+
+    const k = +wagonsEl.value;
+    const tail = s - k * GAP - 0.45;
+    ctx.beginPath();
+    for (let d = tail; d <= s + 0.4; d += 0.05) { const q = at(d); d === tail ? ctx.moveTo(q.x * T, q.y * T) : ctx.lineTo(q.x * T, q.y * T); }
+    ctx.strokeStyle = v('--accent'); ctx.globalAlpha = 0.35; ctx.lineWidth = T * 0.62; ctx.stroke(); ctx.globalAlpha = 1;
+
+    ctx.font = `${Math.round(T * 0.24)}px ${v('--font-mono') || 'monospace'}`;
+    ctx.textAlign = 'center';
+    for (let i = k; i >= 0; i--) {
+      const q = at(s - i * GAP);
+      ctx.save();
+      ctx.translate(q.x * T, q.y * T); ctx.rotate(q.h);
+      const L = T * (i === 0 ? 0.8 : 0.74), W = T * 0.42;
+      ctx.fillStyle = i === 0 ? v('--accent') : (i % 2 ? v('--steel') : v('--cargo'));
+      ctx.fillRect(-L / 2, -W / 2, L, W);
+      if (i === 0) { ctx.fillStyle = v('--paper'); ctx.fillRect(L / 2 - T * 0.16, -W / 2 + T * 0.06, T * 0.1, W - T * 0.12); }
+      ctx.restore();
+      ctx.fillStyle = v('--ink');
+      ctx.fillText(i === 0 ? 's' : `s−${i}g`, q.x * T, q.y * T - T * 0.42);
+    }
+    sval.textContent = `s = ${(((s % total) + total) % total).toFixed(2)} tiles · loop = ${total.toFixed(2)} tiles`;
+  }
+  function tick(t) {
+    if (!playing) return;
+    const dt = last ? Math.min(0.05, (t - last) / 1000) : 0;
+    last = t; s += SPEED * dt; draw();
+    requestAnimationFrame(tick);
+  }
+  playEl.addEventListener('click', () => {
+    playing = !playing; playEl.textContent = playing ? 'Pause' : 'Play';
+    last = 0; if (playing) requestAnimationFrame(tick);
+  });
+  wagonsEl.addEventListener('input', draw);
+  window.addEventListener('resize', size);
+  window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', draw);
+  new MutationObserver(draw).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(draw);
+  size();
+  if (!reduce) { playing = true; playEl.textContent = 'Pause'; requestAnimationFrame(tick); }
+})();
+</script>
