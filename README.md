@@ -28,6 +28,7 @@ Each subdirectory is a standalone game (Rust + macroquad, wasm) with its own
 | [`cargo-cascade/`](cargo-cascade/) | Cargo Cascade | Trains | Feed the coal-power-factory-town chain; supplied towns light defensive auras. |
 | [`last-train-out/`](last-train-out/) | Last Train Out | Trains | Conductor of an armoured evacuation train circling a loop; hold out 15 minutes. |
 | [`tycoon-tide/`](tycoon-tide/) | Tycoon Tide | Trains | Railway city-builder: grow towns, rally militia, drive your HQ loco on owned rails. |
+| [`rail-siege/`](rail-siege/) | Rail Siege | Trains | Build lines with the mouse; trains deliver cargo and shoot the horde. Survive 15 minutes, beat the UFO. |
 | [`commander-holdout/`](commander-holdout/) | Commander Holdout | BAR | Reclaim, build towers next to you, D-Gun the swarm; survive 20 minutes. |
 | [`nano-fortress/`](nano-fortress/) | Nano Fortress | BAR | No weapon: your nano beam builds the defences. Buildpower is your DPS. |
 | [`mex-rush/`](mex-rush/) | Mex Rush | BAR | Capture metal extractors and dash between them as raiders hunt your economy. |
