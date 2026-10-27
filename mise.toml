@@ -55,3 +55,8 @@ for d in */; do
   (cd "$d" && mise run build)
 done
 '''
+
+[tasks.site]
+description = "Build every game and assemble the GitHub Pages site into site/"
+depends = ["build:web", "build-all"]
+run = "scripts/build-site.sh"
