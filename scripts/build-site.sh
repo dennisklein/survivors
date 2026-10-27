@@ -57,13 +57,16 @@ cat >"$out/index.html" <<HTML
     .card h3 { margin: 0 0 4px; font-size: 1.05rem; }
     .card p { margin: 0; color: var(--dim); font-size: .92rem; }
     footer { margin-top: 48px; color: var(--dim); font-size: .85rem; }
-    a { color: var(--accent); }
+    a { color: var(--accent); -webkit-tap-highlight-color: transparent; }
+    .lead + .lead { margin-top: 8px; }
+    @media (max-width: 520px) { h1 { font-size: 1.6rem; } main { padding-top: 20px; } .grid { grid-template-columns: 1fr; } }
   </style>
 </head>
 <body>
   <main>
     <h1>Survivors</h1>
     <p class="lead">Survivor-like games for the browser, written in Rust with macroquad. Pick a game to play.</p>
+    <p class="lead">On a phone or tablet, turn it to landscape. Drag on the left side to move, and tap the buttons on the right to act.</p>
     <h2>Trains</h2>
     <div class="grid">
 $cards_trains    </div>

@@ -2,15 +2,45 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
   <title>Wall Weaver</title>
   <style>
     html, body, canvas { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: #0d0f14; }
     canvas { display: block; outline: none; }
+    html, body { position: fixed; inset: 0; overscroll-behavior: none; touch-action: none; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; -webkit-tap-highlight-color: transparent; }
+    canvas { touch-action: none; }
   </style>
 </head>
 <body>
   <canvas id="glcanvas" tabindex="1"></canvas>
+  <script>
+    // Mobile: resume audio on every tap until it plays, and go full screen
+    // in landscape on the first tap.
+    (function () {
+      var Base = window.AudioContext || window.webkitAudioContext;
+      var contexts = [];
+      if (Base) {
+        window.AudioContext = window.webkitAudioContext = class extends Base {
+          constructor(o) { super(o); contexts.push(this); }
+        };
+      }
+      function unlock() {
+        contexts.forEach(function (c) { if (c.state !== "running") c.resume(); });
+      }
+      ["touchend", "pointerup", "keydown"].forEach(function (e) {
+        document.addEventListener(e, unlock, true);
+      });
+      document.addEventListener("touchend", function () {
+        var el = document.documentElement;
+        if (document.fullscreenElement || !el.requestFullscreen) return;
+        el.requestFullscreen({ navigationUI: "hide" }).then(function () {
+          if (screen.orientation && screen.orientation.lock) return screen.orientation.lock("landscape");
+        }).catch(function () {});
+      }, { once: true, capture: true });
+    })();
+  </script>
   <script src="mq_js_bundle.js"></script>
   <script>load("wall-weaver.wasm");</script>
 </body>
