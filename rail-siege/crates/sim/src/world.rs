@@ -3,7 +3,7 @@
 
 use crate::cards::{self, Card, Item, Levels};
 use crate::director::{self, Director};
-use crate::enemy::{self, Enemy, EnemyKind};
+use crate::enemy::{self, BOSS_CALL_INTERVAL, Enemy, EnemyKind, UFO_FIRE_INTERVAL};
 use crate::grid::Grid;
 use crate::math::V2;
 use crate::rng::Pcg32;
@@ -42,6 +42,14 @@ pub const RAM_COOLDOWN: f32 = 0.5;
 /// After touch damage, a train cannot take touch damage for this time.
 pub const TOUCH_IFRAMES: f32 = 1.0;
 pub const ARMOUR_HP: f32 = 20.0;
+pub const SMALL_UFO_TIMES: [f32; 2] = [420.0, 660.0];
+pub const BOSS_TIME: f32 = 900.0;
+pub const BOSS_CALL_SIZE: u32 = 8;
+pub const PLASMA_SPEED: f32 = 3.0;
+pub const PLASMA_DAMAGE: f32 = 15.0;
+pub const PLASMA_RADIUS: f32 = 0.25;
+/// A UFO over the town hits it once per this many seconds.
+pub const UFO_TOWN_INTERVAL: f32 = 1.0;
 
 /// A player command. The game sends commands, the world applies them.
 #[derive(Clone, Debug, PartialEq)]
@@ -99,6 +107,7 @@ pub enum Event {
     Picked,
     Killed {
         at: V2,
+        big: bool,
     },
     TownHit,
     TrackBroken(Tile),
@@ -108,6 +117,10 @@ pub enum Event {
     Blast,
     TrainHit,
     Wrecked,
+    Plasma,
+    UfoArrived,
+    BossArrived,
+    Won,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -117,6 +130,16 @@ pub enum State {
     LevelUp([Card; 3]),
     /// The town has no HP left.
     Lost,
+    /// The Large UFO is down.
+    Won,
+}
+
+/// A slow plasma ball that a small UFO fires at a train.
+#[derive(Clone, Copy, Debug)]
+pub struct Plasma {
+    pub pos: V2,
+    pub vel: V2,
+    pub life: f32,
 }
 
 /// A line from an industry to the town with its train.
@@ -168,6 +191,10 @@ pub struct World {
     pub fires: Fires,
     /// The town guards turret.
     pub guard: Gun,
+    pub plasma: Vec<Plasma>,
+    /// Small UFOs sent so far.
+    ufos_sent: usize,
+    pub boss_sent: bool,
     director: Director,
     grid: Grid,
     next_id: u32,
@@ -199,6 +226,9 @@ impl World {
             blasts: Vec::new(),
             fires: Fires::new(MAP_W, MAP_H),
             guard: Gun::default(),
+            plasma: Vec::new(),
+            ufos_sent: 0,
+            boss_sent: false,
             director: Director::default(),
             grid: Grid::new(MAP_W, MAP_H),
             next_id: 0,
@@ -460,7 +490,10 @@ impl World {
         }
         self.run_trains();
         self.spawn();
+        self.schedule_ufos();
         self.move_enemies();
+        self.ufo_actions();
+        self.move_plasma();
         self.fire_weapons();
         self.town_guards();
         self.move_shots();
@@ -535,6 +568,7 @@ impl World {
                 .copied()
                 .min_by(|a, b| a.dist_sq(p).total_cmp(&b.dist_sq(p)))
         };
+        let hunt = self.hunted();
         let mut broken = Vec::new();
         for e in &mut self.enemies {
             let target = match e.kind {
@@ -542,6 +576,8 @@ impl World {
                     .filter(|c| c.dist(e.pos) < RESIDENT_AGGRO)
                     .unwrap_or(town),
                 EnemyKind::Bus => nearest(e.pos, &cars).unwrap_or(town),
+                EnemyKind::SmallUfo => hunt.unwrap_or(town),
+                EnemyKind::LargeUfo => town,
                 EnemyKind::Saboteur => {
                     if e.goal.is_none_or(|g| !track.contains(&g)) {
                         e.goal = track.iter().copied().min_by(|a, b| {
@@ -577,6 +613,148 @@ impl World {
         enemy::separate(&mut self.enemies, &self.grid);
     }
 
+    /// The locomotive of the train with most wagons, nearest to the town
+    /// on a tie. Small UFOs hunt it.
+    fn hunted(&self) -> Option<V2> {
+        let town = tile_centre(station::TOWN);
+        self.lines
+            .iter()
+            .filter(|l| !l.train.is_wrecked())
+            .map(|l| &l.train.cars()[0])
+            .zip(self.lines.iter().map(|l| l.train.wagons()))
+            .max_by(|(a, wa), (b, wb)| {
+                wa.cmp(wb)
+                    .then(b.pos.dist_sq(town).total_cmp(&a.pos.dist_sq(town)))
+            })
+            .map(|(c, _)| c.pos)
+    }
+
+    fn schedule_ufos(&mut self) {
+        let size = self.size();
+        if let Some(&at) = SMALL_UFO_TIMES.get(self.ufos_sent)
+            && self.time >= at
+        {
+            self.ufos_sent += 1;
+            let p = director::edge_point(size, &mut self.rng);
+            self.spawn_enemy(EnemyKind::SmallUfo, p);
+            self.events.push(Event::UfoArrived);
+        }
+        if !self.boss_sent && self.time >= BOSS_TIME {
+            self.boss_sent = true;
+            let p = director::edge_point(size, &mut self.rng);
+            let e = Enemy::new(self.next_id, EnemyKind::LargeUfo, p, 1.0);
+            self.next_id += 1;
+            self.enemies.push(e);
+            self.events.push(Event::BossArrived);
+        }
+    }
+
+    pub fn boss(&self) -> Option<&Enemy> {
+        self.enemies.iter().find(|e| e.kind == EnemyKind::LargeUfo)
+    }
+
+    /// Small UFOs fire plasma. The boss breaks track and calls residents.
+    /// UFOs over the town hit it.
+    fn ufo_actions(&mut self) {
+        let target = self.hunted();
+        let town = tile_centre(station::TOWN);
+        let mut calls = Vec::new();
+        let mut town_dmg = 0.0;
+        for e in &mut self.enemies {
+            if !e.kind.flies() {
+                continue;
+            }
+            if e.pos.dist(town) < TOWN_RADIUS + e.radius() && e.ram_cd <= 0.0 {
+                e.ram_cd = UFO_TOWN_INTERVAL;
+                town_dmg += e.stats().town;
+            }
+            if e.timer > 0.0 {
+                continue;
+            }
+            match e.kind {
+                EnemyKind::SmallUfo => {
+                    if let Some(t) = target {
+                        e.timer = UFO_FIRE_INTERVAL;
+                        self.plasma.push(Plasma {
+                            pos: e.pos,
+                            vel: (t - e.pos).norm() * PLASMA_SPEED,
+                            life: 6.0,
+                        });
+                        self.events.push(Event::Plasma);
+                    }
+                }
+                EnemyKind::LargeUfo => {
+                    e.timer = BOSS_CALL_INTERVAL;
+                    calls.push(e.pos);
+                }
+                _ => {}
+            }
+        }
+        if town_dmg > 0.0 {
+            self.damage_town(town_dmg);
+        }
+        for at in calls {
+            for _ in 0..BOSS_CALL_SIZE {
+                let off = V2::from_angle(self.rng.range(0.0, std::f32::consts::TAU))
+                    * self.rng.range(1.5, 3.0);
+                self.spawn_enemy(EnemyKind::Resident, at + off);
+            }
+        }
+        if let Some(b) = self.boss() {
+            let (p, r) = (b.pos, b.radius());
+            for y in (p.y - r).floor() as i32..=(p.y + r).floor() as i32 {
+                for x in (p.x - r).floor() as i32..=(p.x + r).floor() as i32 {
+                    if tile_centre((x, y)).dist(p) < r {
+                        self.break_track((x, y));
+                    }
+                }
+            }
+        }
+    }
+
+    /// Plasma balls fly straight and hurt the first train car they touch.
+    fn move_plasma(&mut self) {
+        let mut hits = Vec::new();
+        let lines = &self.lines;
+        self.plasma.retain_mut(|b| {
+            b.pos += b.vel * DT;
+            b.life -= DT;
+            let reach = PLASMA_RADIUS + CAR_RADIUS;
+            for (li, l) in lines.iter().enumerate() {
+                if l.train.is_wrecked() {
+                    continue;
+                }
+                if l.train
+                    .cars()
+                    .iter()
+                    .any(|c| c.pos.dist_sq(b.pos) < reach * reach)
+                {
+                    hits.push(li);
+                    return false;
+                }
+            }
+            b.life > 0.0
+        });
+        for li in hits {
+            self.hurt_train(li, PLASMA_DAMAGE);
+        }
+    }
+
+    fn hurt_train(&mut self, li: usize, dmg: f32) {
+        let t = &mut self.lines[li].train;
+        if t.is_wrecked() {
+            return;
+        }
+        t.hp -= dmg;
+        self.events.push(Event::TrainHit);
+        if t.hp <= 0.0 {
+            t.hp = 0.0;
+            t.cargo = 0;
+            t.phase = Phase::Wrecked(train::WRECK_TIME);
+            self.events.push(Event::Wrecked);
+        }
+    }
+
     fn rebuild_grid(&mut self) {
         let pts: Vec<V2> = self.enemies.iter().map(|e| e.pos).collect();
         self.grid.build(&pts);
@@ -595,7 +773,7 @@ impl World {
                 let e = &mut enemies[i];
                 let reach = CAR_RADIUS + e.radius();
                 let d = e.pos - car.pos;
-                if d.len_sq() >= reach * reach || e.ram_cd > 0.0 {
+                if d.len_sq() >= reach * reach || e.ram_cd > 0.0 || e.kind.flies() {
                     return;
                 }
                 e.hit(RAM_FACTOR * t.v);
@@ -608,8 +786,10 @@ impl World {
     /// Enemies that touch a car hurt the train. They cannot stand on it.
     fn touch_trains(&mut self) {
         let hp = self.train_hp();
-        for l in &mut self.lines {
+        let mut hits = Vec::new();
+        for (li, l) in self.lines.iter_mut().enumerate() {
             l.iframes -= DT;
+            l.train.hp = l.train.hp.min(hp);
             if l.train.is_wrecked() {
                 continue;
             }
@@ -631,16 +811,11 @@ impl World {
             }
             if hurt > 0.0 && l.iframes <= 0.0 {
                 l.iframes = TOUCH_IFRAMES;
-                l.train.hp -= hurt;
-                self.events.push(Event::TrainHit);
-                if l.train.hp <= 0.0 {
-                    l.train.hp = 0.0;
-                    l.train.cargo = 0;
-                    l.train.phase = Phase::Wrecked(train::WRECK_TIME);
-                    self.events.push(Event::Wrecked);
-                }
+                hits.push((li, hurt));
             }
-            l.train.hp = l.train.hp.min(hp);
+        }
+        for (li, dmg) in hits {
+            self.hurt_train(li, dmg);
         }
     }
 
@@ -826,7 +1001,14 @@ impl World {
             if self.enemies[i].hp <= 0.0 {
                 let e = self.enemies.swap_remove(i);
                 self.kills += 1;
-                self.events.push(Event::Killed { at: e.pos });
+                self.events.push(Event::Killed {
+                    at: e.pos,
+                    big: e.kind.flies(),
+                });
+                if e.kind == EnemyKind::LargeUfo && self.state == State::Running {
+                    self.state = State::Won;
+                    self.events.push(Event::Won);
+                }
             } else {
                 i += 1;
             }
@@ -1354,5 +1536,58 @@ mod tests {
         w.apply(&Command::Pick(2)).unwrap();
         assert_eq!(w.train_hp(), train::TRAIN_HP + ARMOUR_HP);
         assert_eq!(w.lines[0].train.hp, w.train_hp());
+    }
+
+    #[test]
+    fn ufos_come_on_time_and_the_boss_wins_the_run() {
+        let mut w = World::new(22);
+        w.time = SMALL_UFO_TIMES[0] - 0.01;
+        w.step(&[]);
+        let ufo = |w: &World, k| w.enemies.iter().filter(|e| e.kind == k).count();
+        assert_eq!(ufo(&w, EnemyKind::SmallUfo), 1);
+        w.time = BOSS_TIME - 0.01;
+        w.step(&[]);
+        assert_eq!(ufo(&w, EnemyKind::LargeUfo), 1);
+        assert!(w.boss().is_some());
+        for e in &mut w.enemies {
+            if e.kind == EnemyKind::LargeUfo {
+                e.hp = 0.0;
+            }
+        }
+        w.step(&[]);
+        assert_eq!(w.state, State::Won);
+    }
+
+    #[test]
+    fn small_ufo_fires_plasma_at_a_train() {
+        let mut w = World::new(23);
+        let loco = w.lines[0].train.cars()[0].pos;
+        w.spawn_enemy(EnemyKind::SmallUfo, loco + V2::new(4.0, 0.0));
+        w.enemies[0].hp = 1e6;
+        let hp = w.lines[0].train.hp;
+        let mut fired = false;
+        for _ in 0..60 * 4 {
+            w.step(&[]);
+            w.enemies.retain(|e| e.kind == EnemyKind::SmallUfo);
+            fired |= w.events.contains(&Event::Plasma);
+            w.events.clear();
+        }
+        assert!(fired);
+        assert!(w.lines[0].train.hp < hp);
+    }
+
+    #[test]
+    fn boss_breaks_track_and_hits_the_town() {
+        let mut w = World::new(24);
+        let p = w.lines[0].route.pieces.last().unwrap().tile;
+        w.boss_sent = true;
+        w.spawn_enemy(EnemyKind::LargeUfo, tile_centre(p));
+        w.enemies[0].hp = 1e6;
+        for _ in 0..60 * 6 {
+            w.step(&[]);
+        }
+        assert!(w.map.is_broken(p) || w.map.track(p.0, p.1) == 0);
+        assert!(w.town_hp < TOWN_HP);
+        assert!(w.enemies.iter().any(|e| e.kind == EnemyKind::Resident));
     }
 }

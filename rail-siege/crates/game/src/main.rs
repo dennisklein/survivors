@@ -219,7 +219,7 @@ impl Game {
         if is_key_pressed(KeyCode::Space) || is_key_pressed(KeyCode::P) {
             self.paused = !self.paused;
         }
-        if self.world.state == State::Lost && is_key_pressed(KeyCode::Enter) {
+        if matches!(self.world.state, State::Lost | State::Won) && is_key_pressed(KeyCode::Enter) {
             *self = Game::new();
             return;
         }
@@ -301,6 +301,9 @@ impl Game {
         }
         if self.world.state == State::Lost {
             ui::banner("The town fell. Press Enter.");
+        }
+        if self.world.state == State::Won {
+            ui::banner("The Large UFO is down. You win! Press Enter.");
         }
     }
 }

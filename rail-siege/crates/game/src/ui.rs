@@ -112,6 +112,22 @@ pub fn stats(world: &World) {
         world.xp_needed()
     );
     draw_text(&text, 16.0 * k, 34.0 * k, 28.0 * k, TEXT);
+    let t = world.time as u32;
+    let clock = format!("{:02}:{:02} / 15:00", t / 60, t % 60);
+    let m = measure_text(&clock, None, (28.0 * k) as u16, 1.0);
+    draw_text(
+        &clock,
+        screen_width() - m.width - 16.0 * k,
+        34.0 * k,
+        28.0 * k,
+        TEXT,
+    );
+    if let Some(b) = world.boss() {
+        let w = screen_width() * 0.4;
+        let x = (screen_width() - w) / 2.0;
+        draw_rectangle(x, 50.0 * k, w, 12.0 * k, DIM);
+        draw_rectangle(x, 50.0 * k, w * (b.hp / b.max_hp).max(0.0), 12.0 * k, BAD);
+    }
 }
 
 fn card_rects() -> [Rect; 3] {

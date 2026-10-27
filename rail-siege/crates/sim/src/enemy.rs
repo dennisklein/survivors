@@ -13,6 +13,11 @@ pub enum EnemyKind {
     Saboteur,
     /// Stops, aims at a train for 1 s, then charges in a straight line.
     Bus,
+    /// Mini-boss. Hunts a train and fires slow plasma balls.
+    SmallUfo,
+    /// The boss. Flies to the town, breaks the track under it and calls
+    /// groups of residents.
+    LargeUfo,
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -50,14 +55,33 @@ impl EnemyKind {
                 touch: 15.0,
                 town: 3.0,
             },
+            EnemyKind::SmallUfo => Stats {
+                hp: 300.0,
+                speed: 1.5,
+                radius: 0.6,
+                touch: 20.0,
+                town: 5.0,
+            },
+            EnemyKind::LargeUfo => Stats {
+                hp: 4000.0,
+                speed: 0.8,
+                radius: 1.2,
+                touch: 30.0,
+                town: 5.0,
+            },
         }
     }
 
-    /// Flying enemies ignore knockback and other enemies.
+    /// Flying enemies ignore knockback, other enemies and trains.
     pub fn flies(self) -> bool {
-        false
+        matches!(self, EnemyKind::SmallUfo | EnemyKind::LargeUfo)
     }
 }
+
+pub const UFO_FIRE_INTERVAL: f32 = 3.0;
+pub const BOSS_CALL_INTERVAL: f32 = 8.0;
+/// UFOs hover when they are this close to the target.
+const UFO_HOVER: f32 = 2.5;
 
 pub const BUS_AIM_RANGE: f32 = 7.0;
 pub const BUS_AIM_TIME: f32 = 1.0;
@@ -147,6 +171,14 @@ impl Enemy {
                 self.dir * speed.min(to.len() * 4.0)
             }
             EnemyKind::Bus => self.bus(to, speed),
+            EnemyKind::SmallUfo => {
+                self.dir = to.norm();
+                self.dir * (speed * (to.len() / UFO_HOVER).min(1.0))
+            }
+            EnemyKind::LargeUfo => {
+                self.dir = to.norm();
+                self.dir * speed.min(to.len() * 2.0)
+            }
         };
         if self.kind.flies() {
             self.push = V2::ZERO;
@@ -260,6 +292,21 @@ mod tests {
             e.think(V2::new(3.0, 0.0), 1.0 / 60.0);
         }
         assert!(e.pos.dist(V2::new(3.0, 0.0)) < 0.05);
+    }
+
+    #[test]
+    fn ufo_ignores_knockback_and_hovers() {
+        let mut e = Enemy::new(0, EnemyKind::SmallUfo, V2::new(0.0, 0.0), 1.0);
+        e.push = V2::new(0.0, 10.0);
+        for _ in 0..600 {
+            e.think(V2::new(10.0, 0.0), 1.0 / 60.0);
+        }
+        assert!(e.pos.y.abs() < 0.2);
+        assert!(
+            e.pos.x > 7.0 && e.pos.x < 10.0,
+            "stops near the target: {:?}",
+            e.pos
+        );
     }
 
     #[test]
