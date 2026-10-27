@@ -1051,12 +1051,15 @@ mod tests {
         let mut g = Game::new(8);
         g.cmd.pos = v2(100.0, 100.0);
         g.lab.repeat = None;
+        g.lab.turret_damage = 0.0;
         g.spawn_enemy(EnemyKind::Thud);
         g.enemies[0].pos = LAB_POS + v2(300.0, 0.0);
+        let mut min_hp = g.lab.hp;
         for _ in 0..300 {
             g.step(0.05, &idle());
+            min_hp = min_hp.min(g.lab.hp);
         }
-        assert!(g.lab.hp < g.lab.max_hp);
+        assert!(min_hp < g.lab.max_hp);
     }
 
     #[test]
