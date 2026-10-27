@@ -1,0 +1,46 @@
+[tools]
+rust = { version = "1.99.1", targets = "wasm32-unknown-unknown", components = "clippy,rustfmt" }
+miniserve = "0.35.0"
+watchexec = "2.8.0"
+
+[tasks.run]
+description = "Run the game natively"
+run = "cargo run --release"
+
+[tasks.test]
+description = "Run unit tests"
+run = "cargo test"
+
+[tasks.fmt]
+description = "Format code"
+run = "cargo fmt --all"
+
+[tasks.lint]
+description = "Check format and run clippy"
+run = [
+  "cargo fmt --all --check",
+  "cargo clippy --all-targets -- -D warnings",
+]
+
+[tasks.build]
+description = "Build the wasm bundle into dist/"
+sources = ["src/**/*.rs", "Cargo.*", "web/*"]
+outputs = ["dist/freight-siege.wasm"]
+run = [
+  "cargo build --release --target wasm32-unknown-unknown",
+  "mkdir -p dist",
+  "cp target/wasm32-unknown-unknown/release/freight-siege.wasm web/index.html web/mq_js_bundle.js dist/",
+]
+
+[tasks.serve]
+description = "Build and serve the browser game on http://localhost:8080"
+depends = ["build"]
+run = "miniserve --index index.html --port 8080 dist"
+
+[tasks.dev]
+description = "Rebuild on change (run `serve` in a second terminal)"
+run = "mise watch build"
+
+[tasks.ci]
+description = "Run lint, tests and the web build"
+depends = ["lint", "test", "build"]
