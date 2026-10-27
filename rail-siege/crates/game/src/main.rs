@@ -1,6 +1,8 @@
+mod audio;
 mod render;
 mod ui;
 
+use audio::{Audio, Sfx};
 use macroquad::prelude::*;
 use sim::math::V2;
 use sim::route::Route;
@@ -149,8 +151,9 @@ impl Game {
         }
     }
 
-    fn say(&mut self, text: &str) {
+    fn say(&mut self, text: &str, audio: &mut Audio) {
         self.toast = Some((text.to_owned(), 2.0));
+        audio.play(Sfx::Buzz);
     }
 
     fn speed(&self) -> f32 {
@@ -191,7 +194,7 @@ impl Game {
         })
     }
 
-    fn click(&mut self, tile: Tile) {
+    fn click(&mut self, tile: Tile, audio: &mut Audio) {
         let station = self.world.station_at(tile);
         if self.draft.is_none()
             && let Some(i) = self.train_at(self.mouse_world())
@@ -214,7 +217,7 @@ impl Game {
                 if self.world.map.is_broken(tile)
                     && let Err(e) = self.world.apply(&Command::Repair(tile))
                 {
-                    self.say(e.text());
+                    self.say(e.text(), audio);
                 }
             }
             (Some(d), Some(s)) if s == d.from => self.draft = None,
@@ -226,14 +229,14 @@ impl Game {
                 };
                 match self.world.apply(&cmd) {
                     Ok(()) => self.draft = None,
-                    Err(e) => self.say(e.text()),
+                    Err(e) => self.say(e.text(), audio),
                 }
             }
             (Some(d), None) => {
                 if !self.world.map.passable(tile.0, tile.1) {
-                    self.say("Track cannot go there");
+                    self.say("Track cannot go there", audio);
                 } else if d.via.len() >= MAX_WAYPOINTS {
-                    self.say("Too many waypoints");
+                    self.say("Too many waypoints", audio);
                 } else if !d.via.contains(&tile) {
                     d.via.push(tile);
                     d.ghost_end = None;
@@ -256,11 +259,15 @@ impl Game {
         });
     }
 
-    fn update(&mut self) {
+    fn update(&mut self, audio: &mut Audio) {
         let dt = get_frame_time();
+        if is_key_pressed(KeyCode::M) {
+            audio.toggle_mute();
+        }
         if self.screen == Screen::Title {
             if is_key_pressed(KeyCode::Enter) || is_mouse_button_pressed(MouseButton::Left) {
                 self.screen = Screen::Run;
+                audio.start_music();
             }
             return;
         }
@@ -288,7 +295,7 @@ impl Game {
             && !on_panel
             && let Some(t) = hover
         {
-            self.click(t);
+            self.click(t, audio);
         }
         self.update_ghost(hover);
         if let Some((_, left)) = &mut self.toast {
@@ -307,7 +314,9 @@ impl Game {
         if steps == MAX_STEPS {
             self.acc = 0.0;
         }
-        self.world.events.clear();
+        for e in self.world.events.drain(..) {
+            audio.on_event(&e);
+        }
     }
 
     fn draw(&mut self) {
@@ -383,9 +392,10 @@ impl Game {
 
 #[macroquad::main(window_conf)]
 async fn main() {
+    let mut audio = Audio::new().await;
     let mut game = Game::new(Screen::Title);
     loop {
-        game.update();
+        game.update(&mut audio);
         game.draw();
         next_frame().await;
     }

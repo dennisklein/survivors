@@ -118,6 +118,8 @@ pub enum Event {
     TrainHit,
     Wrecked,
     Plasma,
+    /// A train left the industry.
+    Departed,
     UfoArrived,
     BossArrived,
     Won,
@@ -1064,6 +1066,7 @@ impl World {
                     t.cargo += self.stations[line.a].take(want);
                     let waited = waited + DT;
                     t.phase = if t.cargo >= cap || waited >= train::LOAD_WAIT {
+                        self.events.push(Event::Departed);
                         Phase::ToTown
                     } else {
                         Phase::Loading(waited)

@@ -7,5 +7,5 @@ license.workspace = true
 publish.workspace = true
 
 [dependencies]
-macroquad = "=0.4.16"
+macroquad = { version = "=0.4.16", features = ["audio"] }
 sim = { path = "../sim" }

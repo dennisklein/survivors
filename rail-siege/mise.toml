@@ -4,7 +4,7 @@ miniserve = "0.35.0"
 watchexec = "2.8.0"
 
 [tasks.run]
-description = "Run the game natively"
+description = "Run the game natively (needs libasound2-dev on Linux)"
 run = "cargo run -p rail-siege --release"
 
 [tasks.test]

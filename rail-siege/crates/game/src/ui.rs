@@ -298,7 +298,11 @@ pub fn title() {
             22.0,
             MUTED,
         ),
-        ("1 2 3 or click: pick a card", 22.0, MUTED),
+        (
+            "1 2 3 or click: pick a card.  M: sound on or off",
+            22.0,
+            MUTED,
+        ),
         ("", 14.0, TEXT),
         ("Click or press Enter to start", 30.0, GOLD),
     ]);
