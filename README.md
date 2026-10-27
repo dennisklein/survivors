@@ -1,13 +1,15 @@
-# Transport Survivors
+# Survivors
 
-A single-player survivors game for the browser. You drive a train that lays its
-own track. Wagons are weapons. Survive ten minutes and beat the boss.
-
-See [docs/design.html](docs/design.html) for the game design.
+A collection of single-player survivor-like games for the browser, written in
+Rust with macroquad and compiled to wasm.
 
 Play all games in the browser: <https://dennisklein.github.io/survivors/>
 
-## Play
+## Transport Survivors
+
+The game in the repository root. You drive a train that lays its own track.
+Wagons are weapons. Survive ten minutes and beat the boss. See
+[docs/design.html](docs/design.html) for the game design.
 
 ```sh
 mise install      # Rust, wasm target, miniserve, watchexec
