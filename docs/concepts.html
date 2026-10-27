@@ -1,0 +1,776 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Transport Survivors Concepts</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@500;700&family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: one reading column (about 70ch) on a "grass" ground; figures and tables may run wider inside their own scroll boxes. */
+:root {
+  --bg: #eef1ea;
+  --paper: #f9faf6;
+  --ink: #1b231e;
+  --muted: #56615a;
+  --rule: #cbd2c6;
+  --accent: #1f4ea3;      /* company colour: dark blue */
+  --accent-soft: #dbe5f6;
+  --danger: #b8382b;      /* signal at danger */
+  --cargo: #c8920f;       /* cargo crates */
+  --grass: #9cc07a;
+  --grass-2: #8fb66c;
+  --ballast: #8d7f70;
+  --sleeper: #5b4634;
+  --steel: #7d878d;
+  --water: #4a83bf;
+  --font-display: "Pixelify Sans", "Courier New", monospace;
+  --font-body: "Atkinson Hyperlegible", "Segoe UI", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #131915; --paper: #1b231e; --ink: #e2e8e0; --muted: #9aa79e; --rule: #2e3a32;
+    --accent: #86a9ff; --accent-soft: #23314f; --danger: #ff7364; --cargo: #f0bd3d;
+    --grass: #3e6233; --grass-2: #375a2e; --ballast: #6f655a; --sleeper: #2a2119; --steel: #a3adb3; --water: #3f78b5;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #131915; --paper: #1b231e; --ink: #e2e8e0; --muted: #9aa79e; --rule: #2e3a32;
+  --accent: #86a9ff; --accent-soft: #23314f; --danger: #ff7364; --cargo: #f0bd3d;
+  --grass: #3e6233; --grass-2: #375a2e; --ballast: #6f655a; --sleeper: #2a2119; --steel: #a3adb3; --water: #3f78b5;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body {
+  background: var(--bg); color: var(--ink);
+  font-family: var(--font-body); font-size: 17px; line-height: 1.6;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 0 64px;
+}
+main { max-width: 780px; margin: 0 auto; display: grid; gap: 56px; }
+header.top { max-width: 780px; margin: 0 auto; padding-block: 40px 28px; display: grid; gap: 14px; }
+.eyebrow { font-family: var(--font-mono); font-size: 12.5px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+h1, h2 { font-family: var(--font-display); font-weight: 700; line-height: 1.1; text-wrap: balance; margin: 0; }
+h1 { font-size: clamp(38px, 7vw, 60px); letter-spacing: .01em; }
+h2 { font-size: 28px; }
+h3 { font-size: 18px; margin: 0; text-wrap: balance; }
+p { margin: 0; max-width: 68ch; }
+section { display: grid; gap: 18px; min-width: 0; }
+.sub { display: flex; gap: 12px; align-items: baseline; flex-wrap: wrap; }
+.sub .num { font-family: var(--font-mono); color: var(--accent); font-size: 14px; }
+.lede { font-size: 19px; color: var(--ink); }
+.muted { color: var(--muted); }
+.rails {
+  height: 14px; border-radius: 2px;
+  background:
+    linear-gradient(var(--steel), var(--steel)) 0 3px / 100% 2px no-repeat,
+    linear-gradient(var(--steel), var(--steel)) 0 9px / 100% 2px no-repeat,
+    repeating-linear-gradient(90deg, var(--sleeper) 0 5px, transparent 5px 14px),
+    var(--ballast);
+}
+.facts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1px; background: var(--rule); border: 1px solid var(--rule); }
+.facts div { background: var(--paper); padding: 10px 14px; display: grid; gap: 2px; min-width: 0; }
+.facts dt { font-family: var(--font-mono); font-size: 11.5px; letter-spacing: .07em; text-transform: uppercase; color: var(--muted); }
+.facts dd { margin: 0; font-weight: 700; }
+nav.toc ol { margin: 0; padding-left: 22px; columns: 2 220px; column-gap: 32px; }
+nav.toc a { color: var(--accent); text-decoration: none; }
+nav.toc a:hover, nav.toc a:focus-visible { text-decoration: underline; }
+a:focus-visible, button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.approve { border: 2px solid var(--accent); background: var(--accent-soft); padding: 18px 20px; display: grid; gap: 12px; }
+.approve h2 { font-size: 22px; }
+.approve ol { margin: 0; padding-left: 22px; display: grid; gap: 6px; }
+ul, ol { margin: 0; padding-left: 22px; }
+li { max-width: 66ch; }
+.list-tight { display: grid; gap: 4px; }
+figure { margin: 0; display: grid; gap: 8px; min-width: 0; align-content: start; }
+figcaption { font-size: 14.5px; color: var(--muted); max-width: 68ch; }
+.fig { overflow-x: auto; background: var(--paper); border: 1px solid var(--rule); padding: 14px; }
+.fig svg { display: block; width: 100%; height: auto; min-width: 560px; }
+.tbl { overflow-x: auto; border: 1px solid var(--rule); background: var(--paper); }
+table { border-collapse: collapse; width: 100%; font-size: 15px; }
+th, td { text-align: left; vertical-align: top; padding: 8px 12px; border-bottom: 1px solid var(--rule); }
+th { font-family: var(--font-mono); font-size: 12px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); font-weight: 600; white-space: nowrap; }
+tr:last-child td { border-bottom: 0; }
+td.n { font-variant-numeric: tabular-nums; white-space: nowrap; }
+code, pre, kbd { font-family: var(--font-mono); font-size: 14px; }
+code { background: var(--paper); border: 1px solid var(--rule); padding: 0 4px; border-radius: 3px; }
+kbd { border: 1px solid var(--rule); border-bottom-width: 2px; background: var(--paper); padding: 0 5px; border-radius: 3px; white-space: nowrap; }
+pre { margin: 0; background: var(--paper); border: 1px solid var(--rule); padding: 14px 16px; overflow-x: auto; line-height: 1.5; }
+pre code { border: 0; padding: 0; background: none; }
+.tag { display: inline-block; font-family: var(--font-mono); font-size: 11.5px; letter-spacing: .05em; padding: 1px 7px; border-radius: 3px; border: 1px solid currentColor; white-space: nowrap; }
+.tag.in { color: var(--accent); }
+.tag.out { color: var(--muted); }
+.tag.rec { color: var(--accent); background: var(--accent-soft); }
+.cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 20px; }
+.cols > div { display: grid; gap: 10px; align-content: start; min-width: 0; }
+.sketch { background: var(--paper); border: 1px solid var(--rule); padding: 14px; display: grid; gap: 12px; }
+.sketch canvas { width: 100%; max-width: 100%; height: auto; display: block; background: var(--grass); }
+.controls { display: flex; gap: 16px; align-items: center; flex-wrap: wrap; font-size: 15px; }
+button { font: inherit; font-weight: 700; color: var(--paper); background: var(--accent); border: 0; padding: 6px 14px; border-radius: 3px; cursor: pointer; }
+label { display: inline-flex; gap: 8px; align-items: center; }
+.note { border-left: 3px solid var(--cargo); padding: 2px 0 2px 14px; }
+.risk td:first-child { font-weight: 700; }
+/* SVG classes, all colours from tokens */
+.s-paper { fill: var(--paper); }
+.s-bg { fill: var(--bg); }
+.s-grass { fill: var(--grass); }
+.s-grass2 { fill: var(--grass-2); }
+.s-water { fill: var(--water); }
+.s-box { fill: var(--paper); stroke: var(--ink); stroke-width: 1.5; }
+.s-box-acc { fill: var(--accent-soft); stroke: var(--accent); stroke-width: 2; }
+.s-box-dng { fill: var(--paper); stroke: var(--danger); stroke-width: 2; }
+.s-line { fill: none; stroke: var(--ink); stroke-width: 1.5; }
+.s-line-acc { fill: none; stroke: var(--accent); stroke-width: 2; }
+.s-line-dng { fill: none; stroke: var(--danger); stroke-width: 1.5; stroke-dasharray: 4 4; }
+.s-grid { fill: none; stroke: var(--rule); stroke-width: 1; }
+.s-ballast { fill: none; stroke: var(--ballast); stroke-width: 14; }
+.s-sleepers { fill: none; stroke: var(--sleeper); stroke-width: 11; stroke-dasharray: 3 5; }
+.s-new { fill: none; stroke: var(--accent); stroke-width: 6; stroke-dasharray: 7 5; }
+.s-route { fill: none; stroke: var(--accent); stroke-width: 4; opacity: .85; }
+.s-text { fill: var(--ink); font-family: var(--font-body); font-size: 14px; }
+.s-text-sm { fill: var(--muted); font-family: var(--font-body); font-size: 12px; }
+.s-mono { fill: var(--ink); font-family: var(--font-mono); font-size: 12px; }
+.s-mono-acc { fill: var(--accent); font-family: var(--font-mono); font-size: 12px; font-weight: 600; }
+.s-title { fill: var(--ink); font-family: var(--font-body); font-size: 14px; font-weight: 700; }
+.s-acc { fill: var(--accent); }
+.s-dng { fill: var(--danger); }
+.s-cargo { fill: var(--cargo); }
+.s-steel { fill: var(--steel); }
+.s-ink { fill: var(--ink); }
+.s-area { fill: var(--accent); opacity: .16; }
+.s-curve { fill: none; stroke: var(--accent); stroke-width: 2.5; }
+@media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto !important; } }
+@media (max-width: 520px) { body { font-size: 16px; } h2 { font-size: 24px; } .facts { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+
+/* Concepts page additions */
+.concept { border-top: 3px solid var(--ink); padding-top: 18px; }
+.concept.rec { border-top-color: var(--accent); }
+.concept .sub .num { font-size: 15px; }
+.pitch { font-size: 19px; }
+.meter { display: grid; grid-template-columns: auto 1fr auto; gap: 10px; align-items: center; font-size: 15px; }
+.meter .bar { height: 10px; background: var(--rule); border-radius: 2px; overflow: hidden; }
+.meter .bar span { display: block; height: 100%; background: var(--accent); }
+.meter b { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+.verdict { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 20px; }
+.verdict > div { display: grid; gap: 6px; align-content: start; min-width: 0; }
+.verdict h3 { font-family: var(--font-mono); font-size: 12.5px; letter-spacing: .07em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+.good li::marker { content: "+  "; color: var(--accent); font-weight: 700; }
+.bad li::marker { content: "\2212  "; color: var(--danger); font-weight: 700; }
+.demo-wrap { background: var(--paper); border: 1px solid var(--rule); padding: 14px; display: grid; gap: 12px; }
+#demo { width: 100%; height: auto; display: block; aspect-ratio: 720 / 420; max-width: 100%; touch-action: manipulation; cursor: pointer; }
+.stats { display: flex; flex-wrap: wrap; gap: 8px 22px; font-family: var(--font-mono); font-size: 14px; font-variant-numeric: tabular-nums; }
+.stats span b { color: var(--accent); }
+.stats .warn b { color: var(--danger); }
+#demo-msg { min-height: 1.6em; font-size: 15px; }
+button.ghost { color: var(--accent); background: transparent; border: 1px solid var(--accent); }
+.s-box-acc2 { fill: var(--accent); stroke: var(--accent); stroke-width: 2; }
+.s-title-inv { fill: var(--paper); font-family: var(--font-body); font-size: 14px; font-weight: 700; }
+.s-text-inv { fill: var(--paper); font-family: var(--font-body); font-size: 12px; opacity: .85; }
+td.c { text-align: center; }
+</style>
+
+<header class="top">
+  <span class="eyebrow">Concept options · For decision</span>
+  <h1>Transport Survivors: new concepts</h1>
+  <div class="rails" aria-hidden="true"></div>
+  <p class="lede">Four new ways to make a survivors game with OpenTTD trains. All four drop the track laying while driving. Three of them move toward Transport Tycoon: build a network, earn money, run many trains. One concept is recommended, and you can play a sketch of it in this page.</p>
+  <dl class="facts">
+    <div><dt>Concepts</dt><dd>4</dd></div>
+    <div><dt>Recommended</dt><dd>A Rail Siege</dd></div>
+    <div><dt>Stack</dt><dd>Rust, macroquad, mise</dd></div>
+  </dl>
+  <nav class="toc" aria-label="Contents"><ol start="0">
+    <li><a href="#problem">What went wrong in the MVP</a></li>
+    <li><a href="#concept-a">A Rail Siege (recommended)</a></li>
+    <li><a href="#concept-b">B Last Town</a></li>
+    <li><a href="#concept-c">C Station Stop</a></li>
+    <li><a href="#concept-d">D Signal Box</a></li>
+    <li><a href="#compare">Side by side</a></li>
+  </ol></nav>
+</header>
+<main>
+
+<section id="problem" aria-labelledby="h-problem">
+  <div class="sub"><span class="num">0</span><h2 id="h-problem">What went wrong in the MVP</h2></div>
+  <p>Dennis played the MVP and gave two points: <b>the track laying was bad</b>, and the game must feel <b>more like Transport Tycoon</b>. The figure shows the cause. In the MVP you lay track while you drive. You must make one choice per tile, under fire. In Transport Tycoon you plan a line once, and the trains drive it many times.</p>
+  <figure>
+    <div class="fig">
+      <svg viewBox="0 0 680 230" role="img" aria-labelledby="prob-t">
+        <title id="prob-t">Left: in the MVP, each tile needs a left, straight or right choice while enemies attack, about 2.5 choices per second. Right: in Transport Tycoon you drag one line between two stations, and trains drive it many times.</title>
+        <defs><marker id="p-ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" class="s-acc"/></marker></defs>
+        <rect x="0" y="0" width="330" height="230" class="s-paper"/>
+        <text x="16" y="26" class="s-title">MVP: lay track while you drive</text>
+        <g>
+          <rect x="16" y="50" width="298" height="70" class="s-grass"/>
+          <path d="M16 85 L 120 85" class="s-ballast"/><path d="M16 85 L 120 85" class="s-sleepers"/>
+          <rect x="96" y="77" width="24" height="16" class="s-acc"/>
+          <path d="M126 85 L 300 85" class="s-new"/>
+          <text x="150" y="70" text-anchor="middle" class="s-mono-acc">?</text>
+          <text x="190" y="70" text-anchor="middle" class="s-mono-acc">?</text>
+          <text x="230" y="70" text-anchor="middle" class="s-mono-acc">?</text>
+          <text x="270" y="70" text-anchor="middle" class="s-mono-acc">?</text>
+          <circle cx="170" cy="108" r="5" class="s-dng"/><circle cx="215" cy="60" r="5" class="s-dng"/><circle cx="262" cy="110" r="5" class="s-dng"/>
+        </g>
+        <text x="16" y="150" class="s-text">1 choice per tile: left, straight, right.</text>
+        <text x="16" y="172" class="s-text">2.5 tiles/s = 2.5 choices/s, under fire.</text>
+        <text x="16" y="194" class="s-text">A wrong key gives a bad track forever.</text>
+        <rect x="350" y="0" width="330" height="230" class="s-paper"/>
+        <text x="366" y="26" class="s-title">Transport Tycoon: plan, then watch</text>
+        <rect x="366" y="50" width="298" height="70" class="s-grass"/>
+        <path d="M398 98 L 470 98 Q 490 98 490 78 L 490 72 Q 490 64 510 64 L 630 64" class="s-ballast"/>
+        <path d="M398 98 L 470 98 Q 490 98 490 78 L 490 72 Q 490 64 510 64 L 630 64" class="s-sleepers"/>
+        <rect x="378" y="88" width="22" height="22" class="s-cargo"/>
+        <rect x="630" y="54" width="22" height="22" class="s-acc"/>
+        <rect x="420" y="90" width="20" height="14" class="s-acc"/><rect x="443" y="90" width="18" height="14" class="s-steel"/>
+        <path d="M540 108 C 580 112, 610 100, 636 82" class="s-line-acc" marker-end="url(#p-ar)"/>
+        <text x="366" y="150" class="s-text">1 drag from station to station.</text>
+        <text x="366" y="172" class="s-text">The game finds the route and shows the cost.</text>
+        <text x="366" y="194" class="s-text">Trains drive it again and again.</text>
+      </svg>
+    </div>
+    <figcaption>The cause of the bad feel: many small, fast, permanent choices. All four concepts below remove them.</figcaption>
+  </figure>
+</section>
+
+<section id="concept-a" class="concept rec" aria-labelledby="h-a">
+  <div class="sub"><span class="num">A</span><h2 id="h-a">Rail Siege</h2> <span class="tag rec">recommended</span></div>
+  <p class="pitch">Build a rail network with the mouse. Your trains carry cargo to the town and shoot the horde on the way. Money buys more trains. The network is your weapon.</p>
+  <dl class="facts"><div><dt>You control</dt><dd>Mouse: build, buy, upgrade</dd></div><div><dt>Lose</dt><dd>Town HP is 0</dd></div><div><dt>Run</dt><dd>15 min + boss</dd></div></dl>
+  <figure>
+    <div class="fig"><svg viewBox="0 0 680 320" role="img" aria-labelledby="a-t">
+<title id="a-t">Core loop of Rail Siege: build a line, trains run it, deliver and fight, spend money on cards, bigger network, build again. The horde attacks the town and the track.</title>
+<defs>
+<marker id="a-ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" class="s-ink"/></marker>
+<marker id="a-ard" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" class="s-dng"/></marker>
+</defs>
+<rect x="245" y="18" width="190" height="52" rx="4" class="s-box-acc"/>
+<text x="340" y="40" text-anchor="middle" class="s-title">Build a line</text>
+<text x="340" y="58" text-anchor="middle" class="s-text-sm">drag from station to station</text>
+<rect x="480" y="120" width="190" height="52" rx="4" class="s-box"/>
+<text x="575" y="142" text-anchor="middle" class="s-title">Trains run the line</text>
+<text x="575" y="160" text-anchor="middle" class="s-text-sm">automatic, OpenTTD rules</text>
+<rect x="400" y="250" width="190" height="52" rx="4" class="s-box"/>
+<text x="495" y="272" text-anchor="middle" class="s-title">Deliver and fight</text>
+<text x="495" y="290" text-anchor="middle" class="s-text-sm">cargo pays, wagons shoot</text>
+<rect x="90" y="250" width="190" height="52" rx="4" class="s-box-acc"/>
+<text x="185" y="272" text-anchor="middle" class="s-title">Spend the money</text>
+<text x="185" y="290" text-anchor="middle" class="s-text-sm">pick 1 of 3 company cards</text>
+<rect x="10" y="120" width="190" height="52" rx="4" class="s-box"/>
+<text x="105" y="142" text-anchor="middle" class="s-title">Bigger network</text>
+<text x="105" y="160" text-anchor="middle" class="s-text-sm">new train, wagon, signal</text>
+<path d="M435 52 C 520 60, 565 85, 572 116" class="s-line" marker-end="url(#a-ar)"/>
+<path d="M570 172 C 565 210, 545 235, 530 248" class="s-line" marker-end="url(#a-ar)"/>
+<path d="M400 276 L 284 276" class="s-line" marker-end="url(#a-ar)"/>
+<path d="M150 250 C 130 225, 112 200, 108 176" class="s-line" marker-end="url(#a-ar)"/>
+<path d="M110 120 C 120 80, 175 55, 241 48" class="s-line" marker-end="url(#a-ar)"/>
+<rect x="265" y="140" width="150" height="52" rx="4" class="s-box-dng"/>
+<text x="340" y="162" text-anchor="middle" class="s-title">Horde</text>
+<text x="340" y="180" text-anchor="middle" class="s-text-sm">attacks town and track</text>
+<path d="M385 192 L 445 246" class="s-line-dng" marker-end="url(#a-ard)"/>
+<rect x="10" y="296" width="14" height="14" rx="2" class="s-box-acc"/>
+<text x="30" y="308" class="s-text-sm">you do this</text>
+<rect x="120" y="296" width="14" height="14" rx="2" class="s-box"/>
+<text x="140" y="308" class="s-text-sm">the game does this</text>
+<rect x="270" y="296" width="14" height="14" rx="2" class="s-box-dng"/>
+<text x="290" y="308" class="s-text-sm">pressure</text>
+</svg></div>
+    <figcaption>Core loop of Rail Siege.</figcaption>
+  </figure>
+  <div class="cols"><div><h3>How it plays</h3><ul class="list-tight"><li>Click a station, then click a second station. The game finds the shortest route (like the OpenTTD autorail tool) and shows the cost. Click again to build.</li><li>Time runs at 25 % while you build. <kbd>Space</kbd> pauses. You never lay track under time pressure.</li><li>Each line gets a train. Trains shuttle and follow OpenTTD rules: acceleration, signals, slower when long.</li><li>Cargo pays only when it arrives in the town. Rich industries are far away, in horde land.</li><li>Wagons shoot automatically. Locomotives ram. A busy line is a moving wall.</li><li>Money fills a bar. Each full bar pauses the game and shows 3 company cards: new train, weapon wagon, signal, faster engine, repair crew.</li></ul></div></div>
+  
+  <div class="demo-wrap">
+    <h3>Try it: playable sketch</h3>
+    <canvas id="demo" width="720" height="420" aria-label="Playable sketch of Rail Siege. A grass map with a town, four industries, one rail line and a train. Red dots walk to the town."></canvas>
+    <div class="stats" aria-live="off">
+      <span>Money <b id="st-money">$0</b></span>
+      <span id="st-hp-w">Town HP <b id="st-hp">20</b></span>
+      <span>Trains <b id="st-trains">1</b></span>
+      <span>Time <b id="st-time">0:00</b></span>
+      <span>Speed <b id="st-speed">×1</b></span>
+    </div>
+    <p id="demo-msg">Click a station, then click a second station to build a line.</p>
+    <div class="controls">
+      <button id="demo-pause" type="button">Pause</button>
+      <button id="demo-reset" type="button" class="ghost">Restart</button>
+      <span class="muted">A new line costs $5 per new tile plus $40 for the train. Only lines to the town pay.</span>
+    </div>
+  </div>
+  <div class="verdict">
+    <div><h3>Why it is fun</h3><ul class="good list-tight"><li>Closest to Transport Tycoon: build, earn, expand.</li><li>Track building is calm and planned. This fixes the MVP problem.</li><li>Greed against safety: the long line to the rich coal mine runs through the horde.</li><li>Survivors parts stay: horde, auto fire, cards, short run.</li></ul></div>
+    <div><h3>Problems</h3><ul class="bad list-tight"><li>No hero on screen. It can feel like tower defense.</li><li>Pathfinding for many trains and signals is new work.</li></ul></div>
+  </div>
+  <div class="meter"><span>Code reuse</span><div class="bar" role="img" aria-label="60 %"><span style="width:60%"></span></div><b>60 %</b></div>
+  <p class="muted">Keeps track bits, trails, enemies, director, weapons, cards. Removes steering. Adds mouse build tool, routes, money.</p>
+</section>
+<section id="concept-b" class="concept" aria-labelledby="h-b">
+  <div class="sub"><span class="num">B</span><h2 id="h-b">Last Town</h2></div>
+  <p class="pitch">One walled town in the middle of the map. The town fights, but only with what your trains bring in. Coal powers the guns. Steel repairs the walls. You build the supply lines out into the horde.</p>
+  <dl class="facts"><div><dt>You control</dt><dd>Mouse: build, repair</dd></div><div><dt>Lose</dt><dd>Town walls fall</dd></div><div><dt>Run</dt><dd>20 min + siege</dd></div></dl>
+  <figure>
+    <div class="fig"><svg viewBox="0 0 680 320" role="img" aria-labelledby="b-t">
+<title id="b-t">Core loop of Last Town: build a supply line, trains haul cargo, the town turns cargo into defence, towers fire, pick an upgrade, build again. The horde cuts track and hits trains.</title>
+<defs>
+<marker id="b-ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" class="s-ink"/></marker>
+<marker id="b-ard" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" class="s-dng"/></marker>
+</defs>
+<rect x="245" y="18" width="190" height="52" rx="4" class="s-box-acc"/>
+<text x="340" y="40" text-anchor="middle" class="s-title">Build supply line</text>
+<text x="340" y="58" text-anchor="middle" class="s-text-sm">from industry to town</text>
+<rect x="480" y="120" width="190" height="52" rx="4" class="s-box"/>
+<text x="575" y="142" text-anchor="middle" class="s-title">Trains haul cargo</text>
+<text x="575" y="160" text-anchor="middle" class="s-text-sm">coal, steel, goods</text>
+<rect x="400" y="250" width="190" height="52" rx="4" class="s-box"/>
+<text x="495" y="272" text-anchor="middle" class="s-title">Town makes defence</text>
+<text x="495" y="290" text-anchor="middle" class="s-text-sm">power, walls, people</text>
+<rect x="90" y="250" width="190" height="52" rx="4" class="s-box"/>
+<text x="185" y="272" text-anchor="middle" class="s-title">Towers fire</text>
+<text x="185" y="290" text-anchor="middle" class="s-text-sm">automatic, need supply</text>
+<rect x="10" y="120" width="190" height="52" rx="4" class="s-box-acc"/>
+<text x="105" y="142" text-anchor="middle" class="s-title">Pick an upgrade</text>
+<text x="105" y="160" text-anchor="middle" class="s-text-sm">1 of 3 town cards</text>
+<path d="M435 52 C 520 60, 565 85, 572 116" class="s-line" marker-end="url(#b-ar)"/>
+<path d="M570 172 C 565 210, 545 235, 530 248" class="s-line" marker-end="url(#b-ar)"/>
+<path d="M400 276 L 284 276" class="s-line" marker-end="url(#b-ar)"/>
+<path d="M150 250 C 130 225, 112 200, 108 176" class="s-line" marker-end="url(#b-ar)"/>
+<path d="M110 120 C 120 80, 175 55, 241 48" class="s-line" marker-end="url(#b-ar)"/>
+<rect x="265" y="140" width="150" height="52" rx="4" class="s-box-dng"/>
+<text x="340" y="162" text-anchor="middle" class="s-title">Horde</text>
+<text x="340" y="180" text-anchor="middle" class="s-text-sm">cuts track, hits trains</text>
+<path d="M415 160 L 476 150" class="s-line-dng" marker-end="url(#b-ard)"/>
+<rect x="10" y="296" width="14" height="14" rx="2" class="s-box-acc"/>
+<text x="30" y="308" class="s-text-sm">you do this</text>
+<rect x="120" y="296" width="14" height="14" rx="2" class="s-box"/>
+<text x="140" y="308" class="s-text-sm">the game does this</text>
+<rect x="270" y="296" width="14" height="14" rx="2" class="s-box-dng"/>
+<text x="290" y="308" class="s-text-sm">pressure</text>
+</svg></div>
+    <figcaption>Core loop of Last Town.</figcaption>
+  </figure>
+  <div class="cols"><div><h3>How it plays</h3><ul class="list-tight"><li>The map has industries like OpenTTD: coal mine, iron mine, steel mill, farm.</li><li>Supply chains matter. Iron ore goes to the steel mill. Steel goes to the town.</li><li>The horde attacks trains and breaks track. You send a repair crew or build a bypass.</li><li>Tower fire rate depends on the coal stock. An empty stock stops the guns.</li></ul></div></div>
+  
+  <div class="verdict">
+    <div><h3>Why it is fun</h3><ul class="good list-tight"><li>Real OpenTTD supply chains with high stakes.</li><li>Each lost line hurts. Each repaired line feels like a win.</li></ul></div>
+    <div><h3>Problems</h3><ul class="bad list-tight"><li>Feedback is slow and indirect. The fun is in the planning, less in the action.</li><li>Closer to tower defense than to survivors.</li></ul></div>
+  </div>
+  <div class="meter"><span>Code reuse</span><div class="bar" role="img" aria-label="45 %"><span style="width:45%"></span></div><b>45 %</b></div>
+  <p class="muted">Keeps track bits, trails, enemies, director. Weapons move from wagons to towers. Needs industries and stockpiles.</p>
+</section>
+<section id="concept-c" class="concept" aria-labelledby="h-c">
+  <div class="sub"><span class="num">C</span><h2 id="h-c">Station Stop</h2></div>
+  <p class="pitch">You drive one train on your own network, like in the MVP, but you never lay track while you drive. At each station the game pauses, and you build new track pieces with the mouse.</p>
+  <dl class="facts"><div><dt>You control</dt><dd>Keys: drive. Mouse: build</dd></div><div><dt>Lose</dt><dd>Train HP is 0</dd></div><div><dt>Run</dt><dd>10 min + boss</dd></div></dl>
+  <figure>
+    <div class="fig"><svg viewBox="0 0 680 320" role="img" aria-labelledby="c-t">
+<title id="c-t">Core loop of Station Stop: drive, ram and shoot, stop at a station, build break, bigger network, drive again. The horde grows every minute.</title>
+<defs>
+<marker id="c-ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" class="s-ink"/></marker>
+<marker id="c-ard" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" class="s-dng"/></marker>
+</defs>
+<rect x="245" y="18" width="190" height="52" rx="4" class="s-box-acc"/>
+<text x="340" y="40" text-anchor="middle" class="s-title">Drive</text>
+<text x="340" y="58" text-anchor="middle" class="s-text-sm">throttle, pick branch at junction</text>
+<rect x="480" y="120" width="190" height="52" rx="4" class="s-box"/>
+<text x="575" y="142" text-anchor="middle" class="s-title">Ram and shoot</text>
+<text x="575" y="160" text-anchor="middle" class="s-text-sm">wagons fire on their own</text>
+<rect x="400" y="250" width="190" height="52" rx="4" class="s-box"/>
+<text x="495" y="272" text-anchor="middle" class="s-title">Stop at station</text>
+<text x="495" y="290" text-anchor="middle" class="s-text-sm">cargo pays, game pauses</text>
+<rect x="90" y="250" width="190" height="52" rx="4" class="s-box-acc"/>
+<text x="185" y="272" text-anchor="middle" class="s-title">Build break</text>
+<text x="185" y="290" text-anchor="middle" class="s-text-sm">place track with the mouse</text>
+<rect x="10" y="120" width="190" height="52" rx="4" class="s-box"/>
+<text x="105" y="142" text-anchor="middle" class="s-title">Bigger network</text>
+<text x="105" y="160" text-anchor="middle" class="s-text-sm">new loops, new stations</text>
+<path d="M435 52 C 520 60, 565 85, 572 116" class="s-line" marker-end="url(#c-ar)"/>
+<path d="M570 172 C 565 210, 545 235, 530 248" class="s-line" marker-end="url(#c-ar)"/>
+<path d="M400 276 L 284 276" class="s-line" marker-end="url(#c-ar)"/>
+<path d="M150 250 C 130 225, 112 200, 108 176" class="s-line" marker-end="url(#c-ar)"/>
+<path d="M110 120 C 120 80, 175 55, 241 48" class="s-line" marker-end="url(#c-ar)"/>
+<rect x="265" y="140" width="150" height="52" rx="4" class="s-box-dng"/>
+<text x="340" y="162" text-anchor="middle" class="s-title">Horde</text>
+<text x="340" y="180" text-anchor="middle" class="s-text-sm">more enemies every minute</text>
+<path d="M415 160 L 476 150" class="s-line-dng" marker-end="url(#c-ard)"/>
+<rect x="10" y="296" width="14" height="14" rx="2" class="s-box-acc"/>
+<text x="30" y="308" class="s-text-sm">you do this</text>
+<rect x="120" y="296" width="14" height="14" rx="2" class="s-box"/>
+<text x="140" y="308" class="s-text-sm">the game does this</text>
+<rect x="270" y="296" width="14" height="14" rx="2" class="s-box-dng"/>
+<text x="290" y="308" class="s-text-sm">pressure</text>
+</svg></div>
+    <figcaption>Core loop of Station Stop.</figcaption>
+  </figure>
+  <div class="cols"><div><h3>How it plays</h3><ul class="list-tight"><li><kbd>W</kbd> and <kbd>S</kbd> set the throttle. <kbd>A</kbd> and <kbd>D</kbd> pick the branch at the next junction.</li><li>Momentum like OpenTTD: a long train needs time to speed up and to stop.</li><li>Station stops come every 60 to 90 s. Delivered cargo gives money for track pieces and wagons.</li></ul></div></div>
+  
+  <div class="verdict">
+    <div><h3>Why it is fun</h3><ul class="good list-tight"><li>Direct action. You are the train.</li><li>Highest code reuse. Fastest to test.</li></ul></div>
+    <div><h3>Problems</h3><ul class="bad list-tight"><li>Still a driving game. It is close to the MVP that did not work.</li><li>Two modes (drive and build) break the flow.</li></ul></div>
+  </div>
+  <div class="meter"><span>Code reuse</span><div class="bar" role="img" aria-label="75 %"><span style="width:75%"></span></div><b>75 %</b></div>
+  <p class="muted">Keeps nearly all of sim. Replaces auto build with a build break and a throttle.</p>
+</section>
+<section id="concept-d" class="concept" aria-labelledby="h-d">
+  <div class="sub"><span class="num">D</span><h2 id="h-d">Signal Box</h2></div>
+  <p class="pitch">A full rail network is on the map from the start. Many armed trains run on it. You are the dispatcher. You click points and signals to send trains to the horde and to keep them from crashing.</p>
+  <dl class="facts"><div><dt>You control</dt><dd>Mouse: points, signals</dd></div><div><dt>Lose</dt><dd>3 stations lost</dd></div><div><dt>Run</dt><dd>12 min + boss</dd></div></dl>
+  <figure>
+    <div class="fig"><svg viewBox="0 0 680 320" role="img" aria-labelledby="d-t">
+<title id="d-t">Core loop of Signal Box: set points and signals, armed trains move, hit the horde, cargo and kills pay for cards, more trains, set points again. The horde blocks lines and hits stations.</title>
+<defs>
+<marker id="d-ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" class="s-ink"/></marker>
+<marker id="d-ard" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" class="s-dng"/></marker>
+</defs>
+<rect x="245" y="18" width="190" height="52" rx="4" class="s-box-acc"/>
+<text x="340" y="40" text-anchor="middle" class="s-title">Set points, signals</text>
+<text x="340" y="58" text-anchor="middle" class="s-text-sm">click to route trains</text>
+<rect x="480" y="120" width="190" height="52" rx="4" class="s-box"/>
+<text x="575" y="142" text-anchor="middle" class="s-title">Armed trains move</text>
+<text x="575" y="160" text-anchor="middle" class="s-text-sm">automatic, obey signals</text>
+<rect x="400" y="250" width="190" height="52" rx="4" class="s-box"/>
+<text x="495" y="272" text-anchor="middle" class="s-title">Hit the horde</text>
+<text x="495" y="290" text-anchor="middle" class="s-text-sm">wagons shoot, locos ram</text>
+<rect x="90" y="250" width="190" height="52" rx="4" class="s-box-acc"/>
+<text x="185" y="272" text-anchor="middle" class="s-title">Cargo and kills pay</text>
+<text x="185" y="290" text-anchor="middle" class="s-text-sm">pick 1 of 3 cards</text>
+<rect x="10" y="120" width="190" height="52" rx="4" class="s-box"/>
+<text x="105" y="142" text-anchor="middle" class="s-title">More trains</text>
+<text x="105" y="160" text-anchor="middle" class="s-text-sm">faster, longer, armed</text>
+<path d="M435 52 C 520 60, 565 85, 572 116" class="s-line" marker-end="url(#d-ar)"/>
+<path d="M570 172 C 565 210, 545 235, 530 248" class="s-line" marker-end="url(#d-ar)"/>
+<path d="M400 276 L 284 276" class="s-line" marker-end="url(#d-ar)"/>
+<path d="M150 250 C 130 225, 112 200, 108 176" class="s-line" marker-end="url(#d-ar)"/>
+<path d="M110 120 C 120 80, 175 55, 241 48" class="s-line" marker-end="url(#d-ar)"/>
+<rect x="265" y="140" width="150" height="52" rx="4" class="s-box-dng"/>
+<text x="340" y="162" text-anchor="middle" class="s-title">Horde</text>
+<text x="340" y="180" text-anchor="middle" class="s-text-sm">blocks lines, hits stations</text>
+<path d="M385 192 L 445 246" class="s-line-dng" marker-end="url(#d-ard)"/>
+<rect x="10" y="296" width="14" height="14" rx="2" class="s-box-acc"/>
+<text x="30" y="308" class="s-text-sm">you do this</text>
+<rect x="120" y="296" width="14" height="14" rx="2" class="s-box"/>
+<text x="140" y="308" class="s-text-sm">the game does this</text>
+<rect x="270" y="296" width="14" height="14" rx="2" class="s-box-dng"/>
+<text x="290" y="308" class="s-text-sm">pressure</text>
+</svg></div>
+    <figcaption>Core loop of Signal Box.</figcaption>
+  </figure>
+  <div class="cols"><div><h3>How it plays</h3><ul class="list-tight"><li>No building. The network is generated for each run, with loops, junctions and stations.</li><li>Two trains on one block crash. Signals stop that, but block the line.</li><li>More trains means more firepower and more crash risk.</li></ul></div></div>
+  
+  <div class="verdict">
+    <div><h3>Why it is fun</h3><ul class="good list-tight"><li>A real-time railway puzzle. Signals are the OpenTTD skill everyone remembers.</li><li>No track building at all.</li></ul></div>
+    <div><h3>Problems</h3><ul class="bad list-tight"><li>No network growth, so less tycoon.</li><li>Crashes can feel unfair. Fast clicks on a busy map are stressful.</li></ul></div>
+  </div>
+  <div class="meter"><span>Code reuse</span><div class="bar" role="img" aria-label="65 %"><span style="width:65%"></span></div><b>65 %</b></div>
+  <p class="muted">Keeps track bits, trails, enemies, weapons. Adds network generator, signals and block logic.</p>
+</section>
+<section id="compare" aria-labelledby="h-compare">
+  <div class="sub"><span class="num">5</span><h2 id="h-compare">Side by side</h2></div>
+  <div class="tbl"><table>
+    <thead><tr><th>Concept</th><th>You control</th><th>Track building</th><th>Tycoon</th><th>Survivors</th><th>Reuse</th></tr></thead>
+    <tbody>
+      <tr><td><a href="#concept-a"><b>A Rail Siege</b></a> <span class="tag rec">rec.</span></td><td>Mouse</td><td>Planned, slow time, auto route</td><td class="c">●●●</td><td class="c">●●○</td><td class="n">60 %</td></tr>
+      <tr><td><a href="#concept-b"><b>B Last Town</b></a></td><td>Mouse</td><td>Planned, auto route</td><td class="c">●●●</td><td class="c">●○○</td><td class="n">45 %</td></tr>
+      <tr><td><a href="#concept-c"><b>C Station Stop</b></a></td><td>Keys + mouse</td><td>In pauses only</td><td class="c">●○○</td><td class="c">●●●</td><td class="n">75 %</td></tr>
+      <tr><td><a href="#concept-d"><b>D Signal Box</b></a></td><td>Mouse</td><td>None</td><td class="c">●●○</td><td class="c">●●○</td><td class="n">65 %</td></tr>
+    </tbody>
+  </table></div>
+  <p class="muted">Reuse is the share of the current 3,700 lines of Rust that stays. The mise tasks, the macroquad setup and the web build stay in all four concepts.</p>
+</section>
+
+<section class="approve" aria-labelledby="h-pick">
+  <h2 id="h-pick">Recommendation: A, Rail Siege</h2>
+  <p>Rail Siege is the most Transport Tycoon of the four. You build a network, earn money and grow. It keeps the survivors parts that work: a growing horde, automatic weapons, 1 of 3 cards, a short run. It removes the problem: you plan track with the mouse, at slow time, and the game finds the route.</p>
+  <p>Ideas from the other concepts can come later as cards: signals from D, supply chains from B.</p>
+  <ol>
+    <li>Pick A, B, C or D. You can also mix, for example "A with the supply chains of B".</li>
+    <li>Then a new design document for the picked concept follows, with numbers, scope and a commit plan.</li>
+  </ol>
+</section>
+
+</main>
+
+<script>
+(() => {
+  const MAP = [
+    "........................",
+    "..C.............~~...F..",
+    "...............~~~~.....",
+    "........~~.....~~~......",
+    ".......~~~~.............",
+    "........~~..............",
+    "........................",
+    "............T...........",
+    "...~~...................",
+    "..~~~~..........~~......",
+    "...~~..........~~~~.....",
+    "...............~~~...I..",
+    "..A.....................",
+    "........................",
+  ];
+  const NAMES = { C: "Coal mine", F: "Forest", I: "Iron mine", A: "Farm", T: "Town" };
+  const W = 24, H = 14, T = 30, GAP = 0.8;
+  const cv = document.getElementById("demo");
+  if (!cv) return;
+  const ctx = cv.getContext("2d");
+  const $ = (id) => document.getElementById(id);
+  const water = new Set(), stations = [];
+  MAP.forEach((row, y) => [...row].forEach((ch, x) => {
+    if (ch === "~") water.add(x + "," + y);
+    else if (ch !== ".") stations.push({ x, y, kind: ch, name: NAMES[ch] });
+  }));
+  const town = stations.find((s) => s.kind === "T");
+  const stationAt = (x, y) => stations.find((s) => s.x === x && s.y === y);
+
+  let col = {};
+  function readColours() {
+    const cs = getComputedStyle(document.documentElement);
+    for (const k of ["grass", "grass-2", "water", "ballast", "sleeper", "steel", "accent", "danger", "cargo", "ink", "paper"])
+      col[k] = cs.getPropertyValue("--" + k).trim();
+  }
+
+  let money, hp, time, trains, track, enemies, flashes, sel, hover, over, spawnT, paused, msgT;
+  function msg(s) { $("demo-msg").textContent = s; }
+
+  function route(a, b) {
+    const N = W * H, dist = new Array(N).fill(Infinity), prev = new Array(N).fill(-1), done = new Array(N).fill(false);
+    const id = (x, y) => y * W + x;
+    dist[id(a.x, a.y)] = 0;
+    for (;;) {
+      let u = -1, best = Infinity;
+      for (let i = 0; i < N; i++) if (!done[i] && dist[i] < best) { best = dist[i]; u = i; }
+      if (u < 0) return null;
+      done[u] = true;
+      const ux = u % W, uy = (u / W) | 0;
+      if (ux === b.x && uy === b.y) break;
+      for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+        const x = ux + dx, y = uy + dy;
+        if (x < 0 || y < 0 || x >= W || y >= H || water.has(x + "," + y)) continue;
+        const st = stationAt(x, y);
+        if (st && st !== b) continue;
+        const v = id(x, y), c = track.has(x + "," + y) ? 0.35 : 1;
+        if (dist[u] + c < dist[v]) { dist[v] = dist[u] + c; prev[v] = u; }
+      }
+    }
+    const path = [];
+    for (let v = id(b.x, b.y); v >= 0; v = prev[v]) path.push([v % W, (v / W) | 0]);
+    return path.reverse();
+  }
+  function cost(path) {
+    let n = 0;
+    for (const [x, y] of path) if (!track.has(x + "," + y) && !stationAt(x, y)) n++;
+    return n * 5 + 40;
+  }
+  function build(a, b, free) {
+    const path = route(a, b);
+    if (!path) { msg("No route. Water is in the way."); return; }
+    const c = cost(path);
+    if (!free && c > money) { msg(`This line costs $${c}. You have $${money}.`); return; }
+    if (!free) money -= c;
+    for (let i = 0; i < path.length; i++) {
+      const k = path[i][0] + "," + path[i][1];
+      if (!track.has(k)) track.set(k, new Set());
+      if (i > 0) {
+        const p = path[i - 1][0] + "," + path[i - 1][1];
+        track.get(k).add(p); track.get(p).add(k);
+      }
+    }
+    const L = path.length - 1, n = Math.max(2, Math.min(4, Math.floor(L / GAP) + 1));
+    trains.push({ path, L, n, a: 0, dir: 1, wait: 0.5, v: 0, cd: new Array(n).fill(0),
+                  pays: a === town || b === town });
+    if (!free) msg(`Built ${a.name} to ${b.name} for $${c}.` + (a === town || b === town ? "" : " This line does not pay: it does not go to the town."));
+  }
+
+  function reset() {
+    money = 120; hp = 20; time = 0; trains = []; track = new Map(); enemies = []; flashes = [];
+    sel = null; hover = null; over = false; spawnT = 1; paused = false;
+    build(town, stations.find((s) => s.kind === "C"), true);
+    $("demo-pause").textContent = "Pause";
+    msg("Click a station, then click a second station to build a line.");
+  }
+
+  function at(path, d) {
+    const i = Math.max(0, Math.min(path.length - 2, Math.floor(d))), f = Math.max(0, Math.min(1, d - i));
+    const [x0, y0] = path[i], [x1, y1] = path[i + 1];
+    return { x: x0 + (x1 - x0) * f + 0.5, y: y0 + (y1 - y0) * f + 0.5, ang: Math.atan2(y1 - y0, x1 - x0) };
+  }
+  function cars(t) {
+    const out = [];
+    for (let i = 0; i < t.n; i++) out.push({ ...at(t.path, t.a + i * GAP), loco: i === (t.dir > 0 ? t.n - 1 : 0) });
+    return out;
+  }
+
+  function step(dt) {
+    time += dt;
+    spawnT -= dt;
+    if (spawnT <= 0) {
+      spawnT = Math.max(0.22, 1.3 - time * 0.012);
+      const side = Math.random() * 4 | 0, r = Math.random();
+      const p = side === 0 ? [r * W, -0.5] : side === 1 ? [W + 0.5, r * H] : side === 2 ? [r * W, H + 0.5] : [-0.5, r * H];
+      enemies.push({ x: p[0], y: p[1], hp: 2, sp: 0.55 + Math.random() * 0.35 });
+    }
+    const tx = town.x + 0.5, ty = town.y + 0.5;
+    for (const e of enemies) {
+      const dx = tx - e.x, dy = ty - e.y, d = Math.hypot(dx, dy);
+      e.x += dx / d * e.sp * dt; e.y += dy / d * e.sp * dt;
+      if (d < 0.6) { e.hp = 0; e.hit = true; hp--; }
+    }
+    for (const t of trains) {
+      const span = (t.n - 1) * GAP;
+      if (t.wait > 0) { t.wait -= dt; continue; }
+      t.v = Math.min(3.2, t.v + 2.5 * dt);
+      t.a += t.dir * t.v * dt;
+      if (t.a >= t.L - span || t.a <= 0) {
+        t.a = Math.max(0, Math.min(t.L - span, t.a));
+        t.dir = -t.dir; t.wait = 0.7; t.v = 0;
+        if (t.pays) money += Math.round(t.L * 2);
+      }
+      const cs = cars(t);
+      cs.forEach((c, i) => {
+        for (const e of enemies) if (e.hp > 0 && Math.hypot(e.x - c.x, e.y - c.y) < 0.45) { e.hp = 0; money += 1; }
+        t.cd[i] -= dt;
+        if (c.loco || t.cd[i] > 0) return;
+        let best = null, bd = 3;
+        for (const e of enemies) {
+          if (e.hp <= 0) continue;
+          const d = Math.hypot(e.x - c.x, e.y - c.y);
+          if (d < bd) { bd = d; best = e; }
+        }
+        if (best) {
+          t.cd[i] = 0.55; best.hp--; if (best.hp <= 0) money += 1;
+          flashes.push({ x0: c.x, y0: c.y, x1: best.x, y1: best.y, life: 0.08 });
+        }
+      });
+    }
+    enemies = enemies.filter((e) => e.hp > 0);
+    for (const f of flashes) f.life -= dt;
+    flashes = flashes.filter((f) => f.life > 0);
+    if (hp <= 0) {
+      hp = 0; over = true;
+      msg(`The town fell after ${fmt(time)}. Press Restart to try again.`);
+    }
+  }
+  const fmt = (s) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, "0")}`;
+
+  function line(pts, w, colr, dash) {
+    ctx.lineWidth = w; ctx.strokeStyle = colr; ctx.setLineDash(dash || []);
+    ctx.beginPath();
+    for (const [x0, y0, x1, y1] of pts) { ctx.moveTo(x0, y0); ctx.lineTo(x1, y1); }
+    ctx.stroke(); ctx.setLineDash([]);
+  }
+  function draw() {
+    ctx.lineCap = "round";
+    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+      ctx.fillStyle = water.has(x + "," + y) ? col.water : ((x + y) % 2 ? col["grass-2"] : col.grass);
+      ctx.fillRect(x * T, y * T, T, T);
+    }
+    const segs = [], rails = [];
+    for (const [k, ns] of track) for (const n of ns) {
+      if (k > n) continue;
+      const [x0, y0] = k.split(",").map(Number), [x1, y1] = n.split(",").map(Number);
+      const s = [(x0 + .5) * T, (y0 + .5) * T, (x1 + .5) * T, (y1 + .5) * T];
+      segs.push(s);
+      const ox = (y1 - y0) * 3.5, oy = (x0 - x1) * 3.5;
+      rails.push([s[0] + ox, s[1] + oy, s[2] + ox, s[3] + oy], [s[0] - ox, s[1] - oy, s[2] - ox, s[3] - oy]);
+    }
+    ctx.lineCap = "square";
+    line(segs, 14, col.ballast);
+    line(segs, 11, col.sleeper, [3, 5]);
+    line(rails, 1.8, col.steel);
+    ctx.lineCap = "round";
+    if (sel && hover && hover !== sel) {
+      const p = route(sel, hover);
+      if (p) {
+        line(p.slice(1).map((q, i) => [(p[i][0] + .5) * T, (p[i][1] + .5) * T, (q[0] + .5) * T, (q[1] + .5) * T]), 5, col.accent, [7, 5]);
+        const c = cost(p);
+        label(`$${c}`, (hover.x + .5) * T, (hover.y + 1.6) * T, c > money ? col.danger : col.accent);
+      }
+    }
+    for (const s of stations) {
+      ctx.fillStyle = s.kind === "T" ? col.accent : col.cargo;
+      ctx.strokeStyle = col.ink; ctx.lineWidth = 1.5;
+      const pad = s.kind === "T" ? 1 : 4;
+      ctx.fillRect(s.x * T + pad, s.y * T + pad, T - 2 * pad, T - 2 * pad);
+      ctx.strokeRect(s.x * T + pad, s.y * T + pad, T - 2 * pad, T - 2 * pad);
+      if (s === sel) { ctx.strokeStyle = col.accent; ctx.lineWidth = 3; ctx.strokeRect(s.x * T - 4, s.y * T - 4, T + 8, T + 8); }
+      label(s.name, (s.x + .5) * T, s.y * T - 6, col.ink);
+    }
+    ctx.fillStyle = col.danger;
+    for (const e of enemies) { ctx.beginPath(); ctx.arc(e.x * T, e.y * T, 4.5, 0, Math.PI * 2); ctx.fill(); }
+    line(flashes.map((f) => [f.x0 * T, f.y0 * T, f.x1 * T, f.y1 * T]), 2, col.cargo);
+    for (const t of trains) for (const c of cars(t)) {
+      ctx.save(); ctx.translate(c.x * T, c.y * T); ctx.rotate(c.ang);
+      ctx.fillStyle = c.loco ? col.accent : col.steel; ctx.strokeStyle = col.ink; ctx.lineWidth = 1.5;
+      ctx.fillRect(-10, -6, 20, 12); ctx.strokeRect(-10, -6, 20, 12);
+      if (!c.loco) { ctx.fillStyle = col.ink; ctx.fillRect(-3, -3, 6, 6); }
+      ctx.restore();
+    }
+    if (over || paused) {
+      ctx.fillStyle = col.paper; ctx.globalAlpha = 0.7; ctx.fillRect(0, 0, W * T, H * T); ctx.globalAlpha = 1;
+      label(over ? "The town fell" : "Paused", W * T / 2, H * T / 2, over ? col.danger : col.ink, 26);
+    }
+  }
+  function label(s, x, y, c, size) {
+    ctx.font = `700 ${size || 12}px "JetBrains Mono", ui-monospace, monospace`;
+    ctx.textAlign = "center"; ctx.lineWidth = 3; ctx.strokeStyle = col.paper; ctx.strokeText(s, x, y);
+    ctx.fillStyle = c; ctx.fillText(s, x, y);
+  }
+
+  function hud() {
+    $("st-money").textContent = "$" + money;
+    $("st-hp").textContent = hp;
+    $("st-hp-w").className = hp <= 5 ? "warn" : "";
+    $("st-trains").textContent = trains.length;
+    $("st-time").textContent = fmt(time);
+    $("st-speed").textContent = paused || over ? "×0" : sel ? "×0.25 (build)" : "×1";
+  }
+
+  function tileOf(ev) {
+    const r = cv.getBoundingClientRect();
+    return [Math.floor((ev.clientX - r.left) / r.width * W), Math.floor((ev.clientY - r.top) / r.height * H)];
+  }
+  cv.addEventListener("click", (ev) => {
+    if (over) return;
+    const [x, y] = tileOf(ev), s = stationAt(x, y);
+    if (!s) { sel = null; return; }
+    if (!sel) { sel = s; msg(`${s.name} selected. Time runs at 25 %. Click a second station.`); }
+    else if (sel === s) { sel = null; msg("Build cancelled."); }
+    else { build(sel, s, false); sel = null; }
+  });
+  cv.addEventListener("mousemove", (ev) => { const [x, y] = tileOf(ev); hover = stationAt(x, y) || null; });
+  $("demo-pause").addEventListener("click", () => { paused = !paused; $("demo-pause").textContent = paused ? "Resume" : "Pause"; });
+  $("demo-reset").addEventListener("click", reset);
+  document.addEventListener("keydown", (ev) => {
+    if (ev.code !== "Space" || !visible) return;
+    const r = cv.getBoundingClientRect();
+    if (r.bottom < 0 || r.top > innerHeight) return;
+    ev.preventDefault(); $("demo-pause").click();
+  });
+
+  function resize() {
+    const dpr = Math.min(2, window.devicePixelRatio || 1);
+    cv.width = W * T * dpr; cv.height = H * T * dpr;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
+  let visible = true, last = 0, frame = 0;
+  new IntersectionObserver((es) => { visible = es[0].isIntersecting; }).observe(cv);
+  window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", readColours);
+  new MutationObserver(readColours).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+
+  function loop(now) {
+    const dt = Math.min(0.05, (now - last) / 1000 || 0); last = now;
+    if (visible) {
+      if (!paused && !over) step(dt * (sel ? 0.25 : 1));
+      draw();
+      if (frame++ % 6 === 0) hud();
+    }
+    requestAnimationFrame(loop);
+  }
+  readColours(); resize(); reset();
+  for (let i = 0; i < 90; i++) step(1 / 30);
+  draw(); hud();
+  requestAnimationFrame(loop);
+})();
+</script>
+</html>
