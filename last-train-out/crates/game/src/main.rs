@@ -107,7 +107,9 @@ fn crosshair() {
 /// mid-frame would rebind a texture that was just deleted.
 async fn warm_glyph_cache() {
     let chars: String = (32u8..127).map(char::from).collect();
-    for size in [13, 14, 16, 17, 18, 20, 22, 24, 26, 28, 32, 36, 42, 60, 80, 84] {
+    for size in [
+        13, 14, 16, 17, 18, 20, 22, 24, 26, 28, 32, 36, 42, 60, 80, 84,
+    ] {
         measure_text(&chars, None, size, 1.0);
         next_frame().await;
     }

@@ -261,14 +261,29 @@ pub fn build_menu(game: &Game) {
     }
     let ty = y + h - 46.0;
     text(
-        &format!("R repair all ${}   Z/X shunt your car forward/back", game.repair_cost()),
+        &format!(
+            "R repair all ${}   Z/X shunt your car forward/back",
+            game.repair_cost()
+        ),
         x + 16.0,
         ty,
         18.0,
         INK,
     );
-    text("1-6 buy (couples at the tail). Workshops, tenders and infirmaries", x + 16.0, ty + 20.0, 16.0, DIM);
-    text("buff their neighbours - arrange the consist!", x + 16.0, ty + 36.0, 16.0, DIM);
+    text(
+        "1-6 buy (couples at the tail). Workshops, tenders and infirmaries",
+        x + 16.0,
+        ty + 20.0,
+        16.0,
+        DIM,
+    );
+    text(
+        "buff their neighbours - arrange the consist!",
+        x + 16.0,
+        ty + 36.0,
+        16.0,
+        DIM,
+    );
     text("B close", x + w - 70.0, y + h - 6.0, 16.0, DIM);
 }
 
