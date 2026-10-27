@@ -92,8 +92,8 @@ const DEAD_ZONE: f32 = 0.35;
 
 /// Longest touch, in seconds, and largest drag, in pixels, of a tap on
 /// the joystick side.
-const TAP_TIME: f64 = 0.3;
-const TAP_SLOP: f32 = 12.0;
+const TAP_TIME: f64 = 0.5;
+const TAP_SLOP: f32 = 24.0;
 
 /// Part of the screen width, from the left, where the joystick starts.
 const STICK_ZONE: f32 = 0.45;
