@@ -6,8 +6,9 @@ use sim::math::V2;
 use sim::route::Route;
 use sim::station::{Industry, STOCK_MAX, Station, StationKind};
 use sim::track::{self, Piece, Terrain, Tile};
-use sim::train::{CARGO_WAGONS, Train};
-use sim::world::World;
+use sim::train::CARGO_WAGONS;
+use sim::weapon::{BLAST_TTL, WagonKind};
+use sim::world::{Line, World};
 
 const BACKDROP: Color = Color::new(0.11, 0.17, 0.10, 1.0);
 const GRASS: [Color; 3] = [
@@ -40,6 +41,17 @@ const BUS: Color = Color::new(0.95, 0.74, 0.16, 1.0);
 const BUS_WINDOW: Color = Color::new(0.20, 0.28, 0.34, 1.0);
 const AIM: Color = Color::new(1.0, 0.25, 0.2, 0.45);
 const FLASH: Color = Color::new(1.0, 1.0, 1.0, 1.0);
+const ARMOURED: Color = Color::new(0.33, 0.40, 0.30, 1.0);
+const TURRET: Color = Color::new(0.20, 0.25, 0.18, 1.0);
+const HOPPER: Color = Color::new(0.36, 0.27, 0.20, 1.0);
+const COAL: Color = Color::new(0.10, 0.10, 0.10, 1.0);
+const STEAM: Color = Color::new(0.34, 0.45, 0.62, 1.0);
+const DOME: Color = Color::new(0.85, 0.88, 0.92, 1.0);
+const SHOT: Color = Color::new(1.0, 0.92, 0.45, 1.0);
+const FIRE: Color = Color::new(1.0, 0.45, 0.10, 1.0);
+const EMBER: Color = Color::new(1.0, 0.80, 0.25, 1.0);
+const HP_BACK: Color = Color::new(0.0, 0.0, 0.0, 0.6);
+const HP_FRONT: Color = Color::new(0.9, 0.25, 0.25, 1.0);
 
 /// Cheap stable hash of a tile, for texture variation.
 fn hash(x: i32, y: i32) -> u32 {
@@ -102,10 +114,15 @@ pub fn draw_world(world: &World, o: &Overlay) {
         let c = track::tile_centre(w);
         draw_circle_lines(c.x, c.y, 0.32, 0.08, GHOST);
     }
+    draw_fires(world);
+    let owned = world.levels.wagons();
+    let max_hp = world.train_hp();
     for l in &world.lines {
-        draw_train(&l.train);
+        draw_train(l, &owned, max_hp);
     }
+    draw_guard(world);
     draw_enemies(world);
+    draw_shots(world);
     if let Some((x, y)) = o.hover_tile
         && o.hover_station.is_none()
     {
@@ -364,21 +381,55 @@ pub fn draw_box(pos: V2, heading: V2, len: f32, wid: f32, color: Color) {
     );
 }
 
-fn draw_train(train: &Train) {
+fn draw_train(line: &Line, owned: &[WagonKind], max_hp: f32) {
+    let train = &line.train;
     if train.is_wrecked() {
+        // Smoke where the train will come back.
+        let (p, _) = line.route.point(0.5);
+        let t = get_time() as f32;
+        for k in 0..3 {
+            let rise = (t * 0.6 + k as f32 / 3.0).fract();
+            let c = Color::new(0.3, 0.3, 0.3, 0.6 * (1.0 - rise));
+            draw_circle(
+                p.x + 0.2 * k as f32 - 0.2,
+                p.y - rise * 1.2,
+                0.15 + rise * 0.25,
+                c,
+            );
+        }
         return;
     }
     let cars = train.cars();
     let cap = (CARGO_WAGONS as u32 * sim::train::WAGON_CAPACITY).max(1);
     for (k, car) in cars.iter().enumerate().skip(1) {
         let (p, h) = (car.pos, car.heading);
-        draw_box(p, h, 0.8, 0.52, WAGON);
         if k <= CARGO_WAGONS {
+            draw_box(p, h, 0.8, 0.52, WAGON);
             // Fill the cargo wagons in order.
             let per = cap as f32 / CARGO_WAGONS as f32;
             let have = (train.cargo as f32 - per * (k - 1) as f32).clamp(0.0, per) / per;
             if have > 0.0 {
-                draw_box(p, h, 0.62 * have, 0.36, STOCK);
+                draw_box(p, h, 0.62 * have.min(1.0), 0.36, STOCK);
+            }
+            continue;
+        }
+        let Some(&kind) = owned.get(k - 1 - CARGO_WAGONS) else {
+            continue;
+        };
+        match kind {
+            WagonKind::Armoured => {
+                draw_box(p, h, 0.8, 0.52, ARMOURED);
+                let tip = v(p + line.guns[kind as usize].aim * 0.32);
+                draw_line(p.x, p.y, tip.x, tip.y, 0.08, TURRET);
+                draw_circle(p.x, p.y, 0.15, TURRET);
+            }
+            WagonKind::Hopper => {
+                draw_box(p, h, 0.8, 0.52, HOPPER);
+                draw_box(p, h, 0.6, 0.36, COAL);
+            }
+            WagonKind::Steam => {
+                draw_box(p, h, 0.8, 0.52, STEAM);
+                draw_circle(p.x, p.y, 0.16, DOME);
             }
         }
     }
@@ -394,6 +445,76 @@ fn draw_train(train: &Train) {
     );
     let lamp = v(loco.pos + loco.heading * 0.36);
     draw_circle(lamp.x, lamp.y, 0.08, Color::new(1.0, 0.95, 0.6, 1.0));
+    if train.hp < max_hp {
+        let (w, y) = (0.9, loco.pos.y - 0.6);
+        draw_rectangle(loco.pos.x - w / 2.0, y, w, 0.1, HP_BACK);
+        draw_rectangle(
+            loco.pos.x - w / 2.0,
+            y,
+            w * (train.hp / max_hp).max(0.0),
+            0.1,
+            HP_FRONT,
+        );
+    }
+}
+
+fn draw_guard(world: &World) {
+    if world.levels.level(sim::cards::Item::TownGuards) == 0 {
+        return;
+    }
+    let c = track::tile_centre(sim::station::TOWN);
+    draw_circle(c.x, c.y, 0.3, TURRET);
+    let tip = v(c + world.guard.aim * 0.45);
+    draw_line(c.x, c.y, tip.x, tip.y, 0.1, TURRET);
+}
+
+fn draw_fires(world: &World) {
+    let t = get_time() as f32;
+    for ((x, y), ttl) in world.fires.iter() {
+        let flicker = 0.5 + 0.5 * (t * 13.0 + (x * 3 + y * 5) as f32).sin();
+        let a = ttl.min(1.0) * (0.35 + 0.15 * flicker);
+        draw_rectangle(
+            x as f32 + 0.06,
+            y as f32 + 0.06,
+            0.88,
+            0.88,
+            Color { a, ..FIRE },
+        );
+        let e = (hash(x, y) % 4) as f32 * 0.2 + 0.2;
+        draw_circle(
+            x as f32 + e,
+            y as f32 + 0.8 - e * 0.5,
+            0.07,
+            Color {
+                a: a * 2.0,
+                ..EMBER
+            },
+        );
+    }
+}
+
+fn draw_shots(world: &World) {
+    for s in &world.shots {
+        let tail = v(s.pos - s.vel.norm() * 0.25);
+        draw_line(tail.x, tail.y, s.pos.x, s.pos.y, 0.08, SHOT);
+    }
+    for b in &world.blasts {
+        let k = 1.0 - b.ttl / BLAST_TTL;
+        let a = 0.7 * (1.0 - k);
+        draw_circle(
+            b.pos.x,
+            b.pos.y,
+            b.radius * k,
+            Color::new(0.9, 0.95, 1.0, a * 0.35),
+        );
+        draw_circle_lines(
+            b.pos.x,
+            b.pos.y,
+            b.radius * k,
+            0.08,
+            Color::new(1.0, 1.0, 1.0, a),
+        );
+    }
 }
 
 fn tint(e: &Enemy, c: Color) -> Color {

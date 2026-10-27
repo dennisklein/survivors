@@ -1,6 +1,7 @@
 //! Cards: company technology and town upgrades. Every item has 5 levels.
 
 use crate::rng::Pcg32;
+use crate::weapon::WagonKind;
 
 pub const MAX_LEVEL: u8 = 5;
 /// Money for the card that comes when every item is at the top level.
@@ -8,30 +9,59 @@ pub const SUBSIDY: f32 = 150.0;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Kind {
+    Weapon,
     Company,
     Town,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Item {
+    Armoured,
+    Hopper,
+    Steam,
+    Boiler,
     HeavyRails,
     BiggerWagons,
     TrackGang,
     RepairCrew,
+    Armour,
     TownWalls,
+    TownGuards,
 }
 
 impl Item {
-    pub const ALL: [Item; 5] = [
+    pub const ALL: [Item; 11] = [
+        Item::Armoured,
+        Item::Hopper,
+        Item::Steam,
+        Item::Boiler,
         Item::HeavyRails,
         Item::BiggerWagons,
         Item::TrackGang,
         Item::RepairCrew,
+        Item::Armour,
         Item::TownWalls,
+        Item::TownGuards,
     ];
+
+    /// The weapon wagon of a weapon item.
+    pub fn wagon(self) -> Option<WagonKind> {
+        match self {
+            Item::Armoured => Some(WagonKind::Armoured),
+            Item::Hopper => Some(WagonKind::Hopper),
+            Item::Steam => Some(WagonKind::Steam),
+            _ => None,
+        }
+    }
 
     pub fn name(self) -> &'static str {
         match self {
+            Item::Armoured => WagonKind::Armoured.name(),
+            Item::Hopper => WagonKind::Hopper.name(),
+            Item::Steam => WagonKind::Steam.name(),
+            Item::Boiler => "Boiler pressure",
+            Item::Armour => "Armour plating",
+            Item::TownGuards => "Town guards",
             Item::HeavyRails => "Heavy rails",
             Item::BiggerWagons => "Bigger wagons",
             Item::TrackGang => "Track gang",
@@ -42,7 +72,8 @@ impl Item {
 
     pub fn kind(self) -> Kind {
         match self {
-            Item::TownWalls => Kind::Town,
+            Item::Armoured | Item::Hopper | Item::Steam => Kind::Weapon,
+            Item::TownWalls | Item::TownGuards => Kind::Town,
             _ => Kind::Company,
         }
     }
@@ -50,6 +81,13 @@ impl Item {
     /// What the item does at `level`, or what the level adds.
     pub fn describe(self, level: u8) -> &'static str {
         match self {
+            Item::Armoured => WagonKind::Armoured.describe(level),
+            Item::Hopper => WagonKind::Hopper.describe(level),
+            Item::Steam => WagonKind::Steam.describe(level),
+            Item::Boiler => "-10 % weapon cooldown.",
+            Item::Armour => "+20 train HP.",
+            Item::TownGuards if level <= 1 => "A turret in the town. 8 dmg, 1 shot/s, 5 tiles.",
+            Item::TownGuards => "Stronger town turret.",
             Item::RepairCrew if level <= 1 => "Broken track repairs itself after 8 s.",
             Item::RepairCrew => "Repairs 1.5 s faster.",
             Item::TownWalls => "+25 max town HP. Heals 25.",
@@ -78,6 +116,10 @@ impl Levels {
         1.0 + per * self.level(i) as f32
     }
 
+    pub fn cooldown_factor(&self) -> f32 {
+        self.factor(Item::Boiler, -0.1)
+    }
+
     pub fn speed_bonus(&self) -> f32 {
         self.factor(Item::HeavyRails, 0.1)
     }
@@ -89,6 +131,15 @@ impl Levels {
     /// Factor for the cost of track and repairs.
     pub fn build_factor(&self) -> f32 {
         self.factor(Item::TrackGang, -0.15)
+    }
+
+    /// The weapon wagons the company owns, in train order.
+    pub fn wagons(&self) -> Vec<WagonKind> {
+        Item::ALL
+            .into_iter()
+            .filter(|&i| self.level(i) > 0)
+            .filter_map(Item::wagon)
+            .collect()
     }
 
     /// Seconds until broken track repairs itself, if the repair crew works.
@@ -195,6 +246,10 @@ mod tests {
         assert!((l.speed_bonus() - 1.1).abs() < 1e-6);
         assert!((l.build_factor() - 0.7).abs() < 1e-6);
         assert_eq!(l.capacity_bonus(), 1.0);
+        assert!(l.wagons().is_empty());
+        l.raise(Item::Steam);
+        l.raise(Item::Armoured);
+        assert_eq!(l.wagons(), vec![WagonKind::Armoured, WagonKind::Steam]);
         assert_eq!(l.repair_time(), None);
         l.raise(Item::RepairCrew);
         assert_eq!(l.repair_time(), Some(8.0));

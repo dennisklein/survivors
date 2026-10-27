@@ -9,8 +9,10 @@ use crate::math::V2;
 use crate::rng::Pcg32;
 use crate::route::{self, Route};
 use crate::station::{self, MAP_H, MAP_W, Station};
+use crate::track::Dir;
 use crate::track::{Tile, TileMap, tile_centre};
 use crate::train::{self, Phase, Stop, Train};
+use crate::weapon::{self, BLAST_TTL, Blast, Fires, Gun, STEAM_PUSH, Shot, WagonKind};
 
 /// One simulation step: 60 steps per second.
 pub const DT: f32 = 1.0 / 60.0;
@@ -37,6 +39,9 @@ pub const CAR_RADIUS: f32 = 0.4;
 /// Ram damage is this factor times the train speed.
 pub const RAM_FACTOR: f32 = 10.0;
 pub const RAM_COOLDOWN: f32 = 0.5;
+/// After touch damage, a train cannot take touch damage for this time.
+pub const TOUCH_IFRAMES: f32 = 1.0;
+pub const ARMOUR_HP: f32 = 20.0;
 
 /// A player command. The game sends commands, the world applies them.
 #[derive(Clone, Debug, PartialEq)]
@@ -99,6 +104,10 @@ pub enum Event {
     TrackBroken(Tile),
     Repaired,
     Lost,
+    Shot,
+    Blast,
+    TrainHit,
+    Wrecked,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -128,6 +137,9 @@ pub struct Line {
     pub cost: f32,
     /// Time when the line was built.
     pub built: f32,
+    /// Weapon state on this train, indexed by `WagonKind as usize`.
+    pub guns: [Gun; 3],
+    iframes: f32,
 }
 
 pub struct World {
@@ -151,6 +163,11 @@ pub struct World {
     pub kills: u32,
     /// Broken track tiles and how long they are broken.
     pub breaks: Vec<(Tile, f32)>,
+    pub shots: Vec<Shot>,
+    pub blasts: Vec<Blast>,
+    pub fires: Fires,
+    /// The town guards turret.
+    pub guard: Gun,
     director: Director,
     grid: Grid,
     next_id: u32,
@@ -178,11 +195,17 @@ impl World {
             town_max: TOWN_HP,
             kills: 0,
             breaks: Vec::new(),
+            shots: Vec::new(),
+            blasts: Vec::new(),
+            fires: Fires::new(MAP_W, MAP_H),
+            guard: Gun::default(),
             director: Director::default(),
             grid: Grid::new(MAP_W, MAP_H),
             next_id: 0,
         };
-        // The free start line: town to the nearest coal mine.
+        // The free start line: town to the nearest coal mine, with an
+        // armoured wagon.
+        w.levels.raise(Item::Armoured);
         let coal = w.nearest_coal();
         if let Ok(r) = w.plan(coal, 0, &[]) {
             w.add_line(coal, 0, Vec::new(), r, 0.0);
@@ -254,6 +277,10 @@ impl World {
     /// XP needed for the next level.
     pub fn xp_needed(&self) -> u32 {
         cards::xp_needed(self.level)
+    }
+
+    pub fn train_hp(&self) -> f32 {
+        train::TRAIN_HP + ARMOUR_HP * self.levels.level(Item::Armour) as f32
     }
 
     /// Units a train carries.
@@ -334,9 +361,23 @@ impl World {
         match card {
             Card::Item(item) => {
                 self.levels.raise(item);
-                if item == Item::TownWalls {
-                    self.town_max += WALLS_HP;
-                    self.town_hp = (self.town_hp + WALLS_HP).min(self.town_max);
+                match item {
+                    Item::TownWalls => {
+                        self.town_max += WALLS_HP;
+                        self.town_hp = (self.town_hp + WALLS_HP).min(self.town_max);
+                    }
+                    Item::Armour => {
+                        for l in &mut self.lines {
+                            l.train.hp += ARMOUR_HP;
+                        }
+                    }
+                    _ if item.wagon().is_some() => {
+                        let n = self.levels.wagons().len();
+                        for l in &mut self.lines {
+                            l.train.set_weapons(n, &l.route);
+                        }
+                    }
+                    _ => {}
                 }
             }
             Card::Subsidy => self.money += cards::SUBSIDY,
@@ -377,7 +418,7 @@ impl World {
 
     fn add_line(&mut self, a: usize, b: usize, via: Vec<Tile>, route: Route, cost: f32) {
         route.lay(&mut self.map);
-        let train = Train::new(&route, 0, train::TRAIN_HP);
+        let train = Train::new(&route, self.levels.wagons().len(), self.train_hp());
         self.lines.push(Line {
             a,
             b,
@@ -388,6 +429,8 @@ impl World {
             earned: 0.0,
             cost,
             built: self.time,
+            guns: [Gun::default(); 3],
+            iframes: 0.0,
         });
         self.events.push(Event::Built);
     }
@@ -418,7 +461,12 @@ impl World {
         self.run_trains();
         self.spawn();
         self.move_enemies();
+        self.fire_weapons();
+        self.town_guards();
+        self.move_shots();
+        self.burn();
         self.ram();
+        self.touch_trains();
         self.hit_town();
         self.remove_dead();
         self.repair_crew();
@@ -557,13 +605,211 @@ impl World {
         }
     }
 
+    /// Enemies that touch a car hurt the train. They cannot stand on it.
+    fn touch_trains(&mut self) {
+        let hp = self.train_hp();
+        for l in &mut self.lines {
+            l.iframes -= DT;
+            if l.train.is_wrecked() {
+                continue;
+            }
+            let mut hurt: f32 = 0.0;
+            for car in l.train.cars() {
+                let enemies = &mut self.enemies;
+                self.grid.query(car.pos, CAR_RADIUS + 1.5, |i| {
+                    let e = &mut enemies[i];
+                    let reach = CAR_RADIUS + e.radius();
+                    let d = e.pos - car.pos;
+                    if d.len_sq() >= reach * reach || e.hp <= 0.0 {
+                        return;
+                    }
+                    hurt = hurt.max(e.stats().touch);
+                    if !e.kind.flies() {
+                        e.pos = car.pos + d.norm() * reach;
+                    }
+                });
+            }
+            if hurt > 0.0 && l.iframes <= 0.0 {
+                l.iframes = TOUCH_IFRAMES;
+                l.train.hp -= hurt;
+                self.events.push(Event::TrainHit);
+                if l.train.hp <= 0.0 {
+                    l.train.hp = 0.0;
+                    l.train.cargo = 0;
+                    l.train.phase = Phase::Wrecked(train::WRECK_TIME);
+                    self.events.push(Event::Wrecked);
+                }
+            }
+            l.train.hp = l.train.hp.min(hp);
+        }
+    }
+
+    fn fire_weapons(&mut self) {
+        let factor = self.levels.cooldown_factor();
+        let owned = self.levels.wagons();
+        for l in &mut self.lines {
+            if l.train.is_wrecked() {
+                continue;
+            }
+            for (k, &kind) in owned.iter().enumerate() {
+                let car = l.train.cars()[1 + train::CARGO_WAGONS + k];
+                let level = self.levels.level(match kind {
+                    WagonKind::Armoured => Item::Armoured,
+                    WagonKind::Hopper => Item::Hopper,
+                    WagonKind::Steam => Item::Steam,
+                });
+                let g = &mut l.guns[kind as usize];
+                g.cooldown -= DT;
+                match kind {
+                    WagonKind::Armoured => {
+                        if g.cooldown > 0.0 {
+                            continue;
+                        }
+                        let stats = weapon::armoured(level);
+                        let targets = nearest(
+                            &self.enemies,
+                            car.pos,
+                            weapon::ARMOURED_RANGE,
+                            stats.bullets,
+                        );
+                        if targets.is_empty() {
+                            continue;
+                        }
+                        for t in targets {
+                            let aim = (self.enemies[t].pos - car.pos).norm();
+                            g.aim = aim;
+                            self.shots.push(Shot {
+                                pos: car.pos,
+                                vel: aim * weapon::SHOT_SPEED,
+                                damage: stats.damage,
+                                pierce: stats.pierce,
+                                life: weapon::ARMOURED_RANGE * 1.4 / weapon::SHOT_SPEED,
+                                hit: Vec::new(),
+                            });
+                        }
+                        self.events.push(Event::Shot);
+                        g.cooldown = factor / stats.rate;
+                    }
+                    WagonKind::Hopper => {
+                        let tile = (car.pos.x.floor() as i32, car.pos.y.floor() as i32);
+                        if g.last_tile == Some(tile) || !l.train.is_moving() {
+                            continue;
+                        }
+                        g.last_tile = Some(tile);
+                        let h = weapon::hopper(level);
+                        self.fires.light(tile, h.duration, h.dps);
+                        if h.adjacent {
+                            for d in Dir::ALL {
+                                let (dx, dy) = d.delta();
+                                self.fires.light(
+                                    (tile.0 + dx, tile.1 + dy),
+                                    h.duration * 0.5,
+                                    h.dps,
+                                );
+                            }
+                        }
+                    }
+                    WagonKind::Steam => {
+                        if g.cooldown > 0.0 {
+                            continue;
+                        }
+                        let st = weapon::steam(level);
+                        let r2 = st.radius * st.radius;
+                        if !self.enemies.iter().any(|e| e.pos.dist_sq(car.pos) < r2) {
+                            continue;
+                        }
+                        for e in &mut self.enemies {
+                            if e.pos.dist_sq(car.pos) < r2 {
+                                e.hit(st.damage);
+                                e.push = (e.pos - car.pos).norm() * STEAM_PUSH;
+                            }
+                        }
+                        self.blasts.push(Blast {
+                            pos: car.pos,
+                            radius: st.radius,
+                            ttl: BLAST_TTL,
+                        });
+                        self.events.push(Event::Blast);
+                        g.cooldown = st.cooldown * factor;
+                    }
+                }
+            }
+        }
+        for b in &mut self.blasts {
+            b.ttl -= DT;
+        }
+        self.blasts.retain(|b| b.ttl > 0.0);
+    }
+
+    fn town_guards(&mut self) {
+        let level = self.levels.level(Item::TownGuards);
+        if level == 0 {
+            return;
+        }
+        self.guard.cooldown -= DT;
+        if self.guard.cooldown > 0.0 {
+            return;
+        }
+        let g = weapon::guard(level);
+        let at = tile_centre(station::TOWN);
+        let Some(&t) = nearest(&self.enemies, at, g.range, 1).first() else {
+            return;
+        };
+        let aim = (self.enemies[t].pos - at).norm();
+        self.guard.aim = aim;
+        self.shots.push(Shot {
+            pos: at,
+            vel: aim * weapon::SHOT_SPEED,
+            damage: g.damage,
+            pierce: 1,
+            life: g.range * 1.4 / weapon::SHOT_SPEED,
+            hit: Vec::new(),
+        });
+        self.events.push(Event::Shot);
+        self.guard.cooldown = self.levels.cooldown_factor() / g.rate;
+    }
+
+    fn move_shots(&mut self) {
+        let enemies = &mut self.enemies;
+        let grid = &self.grid;
+        self.shots.retain_mut(|s| {
+            s.pos += s.vel * DT;
+            s.life -= DT;
+            grid.query(s.pos, 1.5, |i| {
+                let e = &mut enemies[i];
+                let reach = e.radius() + weapon::SHOT_RADIUS;
+                if s.pierce == 0
+                    || e.hp <= 0.0
+                    || s.hit.contains(&e.id)
+                    || e.pos.dist_sq(s.pos) > reach * reach
+                {
+                    return;
+                }
+                e.hit(s.damage);
+                s.hit.push(e.id);
+                s.pierce -= 1;
+            });
+            s.life > 0.0 && s.pierce > 0
+        });
+    }
+
+    fn burn(&mut self) {
+        self.fires.tick(DT);
+        for e in &mut self.enemies {
+            let dps = self.fires.dps_at(e.pos);
+            if dps > 0.0 {
+                e.hp -= dps * DT;
+            }
+        }
+    }
+
     /// Ground enemies that reach the town hit it and are gone.
     fn hit_town(&mut self) {
         let town = tile_centre(station::TOWN);
         let mut dmg = 0.0;
         self.enemies.retain(|e| {
             if !e.kind.flies() && e.pos.dist(town) < TOWN_RADIUS {
-                dmg += e.stats().touch;
+                dmg += e.stats().town;
                 false
             } else {
                 true
@@ -626,6 +872,7 @@ impl World {
     fn run_trains(&mut self) {
         let cap = self.capacity();
         let bonus = self.levels.speed_bonus();
+        let hp = self.train_hp();
         for li in 0..self.lines.len() {
             let line = &mut self.lines[li];
             let t = &mut line.train;
@@ -652,7 +899,7 @@ impl World {
                     if left > DT {
                         t.phase = Phase::Wrecked(left - DT);
                     } else {
-                        t.respawn(&line.route, train::TRAIN_HP);
+                        t.respawn(&line.route, hp);
                     }
                 }
                 Phase::ToTown | Phase::ToIndustry => {
@@ -688,6 +935,18 @@ impl World {
             }
         }
     }
+}
+
+/// Indices of up to `n` enemies nearest to `p` within `range`.
+fn nearest(enemies: &[Enemy], p: V2, range: f32, n: usize) -> Vec<usize> {
+    let mut found: Vec<(f32, usize)> = enemies
+        .iter()
+        .enumerate()
+        .map(|(i, e)| (e.pos.dist_sq(p), i))
+        .filter(|&(d, _)| d < range * range)
+        .collect();
+    found.sort_by(|a, b| a.0.total_cmp(&b.0));
+    found.into_iter().take(n).map(|(_, i)| i).collect()
 }
 
 #[cfg(test)]
@@ -892,8 +1151,10 @@ mod tests {
         let mut w = World::new(11);
         let tile = w.lines[0].route.pieces[3].tile;
         w.spawn_enemy(EnemyKind::Saboteur, tile_centre(tile) + V2::new(0.2, 0.0));
+        // Keep the train out of the way.
+        w.lines[0].train.phase = Phase::Wrecked(1000.0);
         let mut broke = None;
-        for _ in 0..60 * 4 {
+        for _ in 0..60 * 5 {
             w.step(&[]);
             w.enemies.retain(|e| e.kind == EnemyKind::Saboteur);
             for e in w.events.drain(..) {
@@ -950,7 +1211,7 @@ mod tests {
         let town = tile_centre(station::TOWN);
         w.spawn_enemy(EnemyKind::Resident, town + V2::new(0.5, 0.0));
         w.step(&[]);
-        assert_eq!(w.town_hp, TOWN_HP - EnemyKind::Resident.stats().touch);
+        assert_eq!(w.town_hp, TOWN_HP - EnemyKind::Resident.stats().town);
         w.town_hp = 1.0;
         w.spawn_enemy(EnemyKind::Resident, town);
         w.step(&[]);
@@ -1024,5 +1285,74 @@ mod tests {
         assert_eq!(a.1, b.1);
         assert_eq!(a.2, b.2);
         assert!(!a.2.is_empty());
+    }
+
+    #[test]
+    fn every_train_carries_every_weapon() {
+        let mut w = World::new(17);
+        w.money = 1000.0;
+        let oil = industry(&w, Industry::Oil);
+        w.apply(&Command::Build {
+            a: oil,
+            b: 0,
+            via: vec![],
+        })
+        .unwrap();
+        let cars = |w: &World| {
+            w.lines
+                .iter()
+                .map(|l| l.train.cars().len())
+                .collect::<Vec<_>>()
+        };
+        assert_eq!(cars(&w), vec![4, 4], "loco, 2 cargo wagons, armoured wagon");
+        w.state = State::LevelUp([Card::Item(Item::Steam); 3]);
+        w.pending = 1;
+        w.apply(&Command::Pick(0)).unwrap();
+        assert_eq!(cars(&w), vec![5, 5]);
+    }
+
+    #[test]
+    fn armoured_wagon_shoots_and_kills() {
+        let mut w = World::new(18);
+        let car = w.lines[0].train.cars()[3].pos;
+        w.spawn_enemy(EnemyKind::Resident, car + V2::new(3.0, 0.0));
+        w.enemies[0].hp = 10.0;
+        let mut shots = 0;
+        for _ in 0..60 {
+            w.step(&[]);
+            w.enemies.retain(|e| e.id == 0);
+            shots += w.events.iter().filter(|e| **e == Event::Shot).count();
+        }
+        assert!(shots >= 1);
+        assert_eq!(w.kills, 1);
+    }
+
+    #[test]
+    fn wrecked_train_comes_back_at_the_industry() {
+        let mut w = World::new(19);
+        w.lines[0].train.hp = 1.0;
+        let car = w.lines[0].train.cars()[0].pos;
+        w.spawn_enemy(EnemyKind::Bus, car);
+        w.enemies[0].hp = 1e6;
+        w.step(&[]);
+        assert!(w.lines[0].train.is_wrecked());
+        w.enemies.clear();
+        for _ in 0..(60.0 * train::WRECK_TIME) as usize + 2 {
+            w.step(&[]);
+            w.enemies.clear();
+        }
+        let t = &w.lines[0].train;
+        assert!(!t.is_wrecked());
+        assert_eq!(t.hp, w.train_hp());
+    }
+
+    #[test]
+    fn armour_plating_adds_train_hp() {
+        let mut w = World::new(20);
+        w.state = State::LevelUp([Card::Item(Item::Armour); 3]);
+        w.pending = 1;
+        w.apply(&Command::Pick(2)).unwrap();
+        assert_eq!(w.train_hp(), train::TRAIN_HP + ARMOUR_HP);
+        assert_eq!(w.lines[0].train.hp, w.train_hp());
     }
 }

@@ -20,7 +20,10 @@ pub struct Stats {
     pub hp: f32,
     pub speed: f32,
     pub radius: f32,
+    /// Damage to a train it touches.
     pub touch: f32,
+    /// Damage to the town when it reaches the town.
+    pub town: f32,
 }
 
 impl EnemyKind {
@@ -31,18 +34,21 @@ impl EnemyKind {
                 speed: 1.0,
                 radius: 0.28,
                 touch: 5.0,
+                town: 1.0,
             },
             EnemyKind::Saboteur => Stats {
                 hp: 20.0,
                 speed: 1.4,
                 radius: 0.3,
                 touch: 5.0,
+                town: 1.0,
             },
             EnemyKind::Bus => Stats {
                 hp: 30.0,
                 speed: 3.0,
                 radius: 0.38,
                 touch: 15.0,
+                town: 3.0,
             },
         }
     }
