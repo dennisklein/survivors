@@ -1,0 +1,11 @@
+[package]
+name = "rail-siege"
+version = "0.1.0"
+description = "Rail Siege: macroquad front end"
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+macroquad = "=0.4.16"
+sim = { path = "../sim" }

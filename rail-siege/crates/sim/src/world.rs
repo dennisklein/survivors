@@ -140,6 +140,20 @@ impl World {
         route::find(&self.map, &from, &to, &via, &blocked).ok_or(Refusal::NoRoute)
     }
 
+    /// A route from station `from` over `via` to any tile, for the ghost
+    /// route that follows the mouse before the second station is picked.
+    pub fn sketch(&self, from: usize, via: &[Tile], end: Tile) -> Option<Route> {
+        let blocked: Vec<Tile> = self
+            .stations
+            .iter()
+            .enumerate()
+            .filter(|&(i, _)| i != from)
+            .map(|(_, s)| s.tile)
+            .collect();
+        let start = self.stations[from].platforms();
+        route::find(&self.map, &start, &[end], via, &blocked)
+    }
+
     /// Applies a command now. The game also calls this while paused.
     pub fn apply(&mut self, cmd: &Command) -> Result<(), Refusal> {
         match cmd {
