@@ -1,0 +1,11 @@
+[package]
+name = "wind-and-wreck"
+version = "0.1.0"
+description = "Wind and Wreck: macroquad front end"
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+macroquad = { version = "=0.4.16", features = ["audio"] }
+sim = { path = "../sim" }
