@@ -34,6 +34,9 @@ type powers its own weapon family.
 | P / Esc | Pause |
 | M | Mute / unmute |
 
+On a touch screen, drag on the left side to move. Buttons on the right
+side press the keys of the current screen. A tap acts as a left click.
+
 ## Development
 
 Requires [mise](https://mise.jdx.dev). All commands run from this directory.

@@ -34,6 +34,9 @@ score is the company value.
 | M | Mute / unmute |
 | R / Enter | Restart after game over |
 
+On a touch screen, drag on the left side to move. Buttons on the right
+side press the keys of the current screen. A tap acts as a left click.
+
 ## Development
 
 Requires [mise](https://mise.jdx.dev/). On Linux, native runs need ALSA

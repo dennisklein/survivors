@@ -11,6 +11,10 @@ use rules::{
     Cargo, EnemyKind, Engine, Event, Game, Kind, LAST_NIGHT, Outcome, Phase, TrainState, WORLD_H,
     WORLD_W,
 };
+use touch::{
+    is_key_down, is_key_pressed, is_mouse_button_down, is_mouse_button_pressed,
+    is_mouse_button_released, mouse_position, mouse_wheel,
+};
 
 const PANEL_W: f32 = 290.0;
 const TOP_H: f32 = 44.0;
@@ -1675,6 +1679,20 @@ fn window_conf() -> Conf {
 
 #[macroquad::main(window_conf)]
 async fn main() {
+    touch::set_buttons(&[
+        touch::key("Kettle", KeyCode::Key1),
+        touch::key("Mogul", KeyCode::Key2),
+        touch::key("Express", KeyCode::Key3),
+        touch::key("Signal", KeyCode::T),
+        touch::key("Repair", KeyCode::R),
+        touch::wheel("Zoom+", 1.0),
+        touch::wheel("Zoom-", -1.0),
+        touch::small("Speed", KeyCode::Space),
+        touch::small("Pause", KeyCode::P),
+        touch::small("Back", KeyCode::Escape),
+        touch::small("Mute", KeyCode::M),
+        touch::small("Start", KeyCode::Enter),
+    ]);
     let seed = (macroquad::miniquad::date::now() * 1000.0) as u64;
     rand::srand(seed);
     let mut audio = Audio::load().await;
@@ -1733,6 +1751,6 @@ async fn main() {
                 }
             }
         }
-        next_frame().await;
+        touch::next_frame().await;
     }
 }

@@ -14,6 +14,9 @@ mise run serve    # build for the browser, open http://localhost:8080
 mise run run      # or run natively
 ```
 
+On a touch screen, drag on the left side to steer. Buttons on the right
+side press the keys of the current screen. A tap acts as a left click.
+
 ## Develop
 
 | Task | What it does |

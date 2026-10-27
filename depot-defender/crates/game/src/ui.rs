@@ -6,6 +6,7 @@ use rules::data::{Cargo, EnemyKind, TOWNS, Upgrade};
 use rules::game::{
     DEPOT_MAX_HP, FINAL_WAVE, Game, MAX_LINE_LEVEL, MAX_WEAPON_LEVEL, Phase, TrainState,
 };
+use touch::{is_key_pressed, is_mouse_button_pressed, mouse_position};
 
 pub const BG: Color = Color::new(0.09, 0.1, 0.09, 1.0);
 pub const GROUND: Color = Color::new(0.2, 0.24, 0.17, 1.0);

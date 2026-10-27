@@ -9,6 +9,7 @@ use sim::route::Route;
 use sim::station::{MAP_H, MAP_W};
 use sim::track::Tile;
 use sim::world::{Command, DT, State, World};
+use touch::{is_key_down, is_key_pressed, is_mouse_button_pressed, mouse_position, mouse_wheel};
 
 /// At most this many simulation steps per frame, so a slow frame does not freeze the game.
 const MAX_STEPS: u32 = 5;
@@ -392,11 +393,20 @@ impl Game {
 
 #[macroquad::main(window_conf)]
 async fn main() {
+    touch::set_buttons(&[
+        touch::small("Zoom+", KeyCode::Equal),
+        touch::small("Zoom-", KeyCode::Minus),
+        touch::small("Pause", KeyCode::P),
+        touch::small("Back", KeyCode::Escape),
+        touch::small("Mute", KeyCode::M),
+        touch::small("Restart", KeyCode::R),
+        touch::small("Start", KeyCode::Enter),
+    ]);
     let mut audio = Audio::new().await;
     let mut game = Game::new(Screen::Title);
     loop {
         game.update(&mut audio);
         game.draw();
-        next_frame().await;
+        touch::next_frame().await;
     }
 }

@@ -4,6 +4,7 @@ mod ui;
 use macroquad::prelude::*;
 use sim::train::Turn;
 use sim::world::{DT, Input, State, World};
+use touch::{is_key_down, is_key_pressed, is_mouse_button_pressed};
 
 /// At most this many simulation steps per frame, so a slow frame does not freeze the game.
 const MAX_STEPS: u32 = 5;
@@ -50,6 +51,11 @@ fn new_world() -> World {
 
 #[macroquad::main(window_conf)]
 async fn main() {
+    touch::set_buttons(&[
+        touch::small("Pause", KeyCode::P),
+        touch::small("Restart", KeyCode::R),
+        touch::small("Start", KeyCode::Enter),
+    ]);
     let mut world = new_world();
     let mut screen = Screen::Title;
     let mut acc = 0.0;
@@ -133,6 +139,6 @@ async fn main() {
                 }
             }
         }
-        next_frame().await;
+        touch::next_frame().await;
     }
 }

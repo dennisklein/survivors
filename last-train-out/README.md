@@ -39,6 +39,9 @@ new carriages. Hold out for 15 minutes and the last train departs.
 | M | mute |
 | P / Esc | pause |
 
+On a touch screen, drag on the left side to move. Buttons on the right
+side press the keys of the current screen. A tap acts as a left click.
+
 ## Building and running
 
 Tools are pinned in `mise.toml` (Rust with the wasm32 target, miniserve).

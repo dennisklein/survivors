@@ -11,6 +11,7 @@ publish = false
 
 [dependencies]
 macroquad = { version = "=0.4.16", features = ["audio"] }
+touch = { path = "../crates/touch" }
 
 [profile.release]
 opt-level = 3

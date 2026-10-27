@@ -45,6 +45,9 @@ mise run build   # dist/index.html + dist/freight-siege.wasm + JS loader
 | M | Mute / unmute |
 | Esc | Menu (resume, restart, quit to title) |
 
+On a touch screen, buttons on the right side press the keys of the
+current screen. A tap acts as a left click, and a drag as a mouse drag.
+
 ## Assets and credits
 
 - All graphics are drawn procedurally with macroquad shapes.

@@ -61,6 +61,7 @@ name = "cargo-cascade"
 version = "0.1.0"
 dependencies = [
  "macroquad",
+ "touch",
 ]
 
 [[package]]
@@ -364,6 +365,13 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b97fcaeba89edba30f044a10c6a3cc39df9c3f17d7cd829dd1446cab35f890e0"
 dependencies = [
  "maybe-uninit",
+]
+
+[[package]]
+name = "touch"
+version = "0.1.0"
+dependencies = [
+ "macroquad",
 ]
 
 [[package]]

@@ -8,4 +8,5 @@ publish.workspace = true
 
 [dependencies]
 macroquad = { version = "=0.4.16", features = ["audio"] }
+touch = { path = "../../../crates/touch" }
 rules = { path = "../rules" }

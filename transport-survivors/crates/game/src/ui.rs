@@ -3,6 +3,7 @@
 use macroquad::prelude::*;
 use sim::cards::Upgrade;
 use sim::world::{BOSS_TIME, World};
+use touch::{is_key_pressed, is_mouse_button_pressed, mouse_position};
 
 pub const PANEL: Color = Color::new(0.10, 0.12, 0.10, 0.92);
 pub const PANEL_HOVER: Color = Color::new(0.18, 0.22, 0.17, 0.95);

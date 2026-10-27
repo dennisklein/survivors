@@ -11,6 +11,10 @@ use rules::{
     Cargo, EnemyKind, Event, Game, Phase, STATION_COST, TILE, Tile, V2, WAGON_KINDS, WORLD_H,
     WORLD_W, WagonKind,
 };
+use touch::{
+    is_key_pressed, is_mouse_button_down, is_mouse_button_pressed, is_mouse_button_released,
+    mouse_position,
+};
 
 const HUD_TOP: f32 = 44.0;
 const HUD_BOTTOM: f32 = 52.0;
@@ -972,6 +976,18 @@ fn any_input() -> bool {
 
 #[macroquad::main(window_conf)]
 async fn main() {
+    touch::set_buttons(&[
+        touch::key("Plan", KeyCode::Space),
+        touch::key("Gatling", KeyCode::Key1),
+        touch::key("Cannon", KeyCode::Key2),
+        touch::key("Tesla", KeyCode::Key3),
+        touch::key("Mortar", KeyCode::Key4),
+        touch::key("Repair", KeyCode::R),
+        touch::small("Line", KeyCode::Tab),
+        touch::small("Menu", KeyCode::Escape),
+        touch::small("Start", KeyCode::Enter),
+        touch::small("Mute", KeyCode::M),
+    ]);
     let mut audio = Audio::load().await;
     let mut app = App {
         screen: Screen::Title,
@@ -1011,6 +1027,6 @@ async fn main() {
                 draw_end(&app.game);
             }
         }
-        next_frame().await;
+        touch::next_frame().await;
     }
 }

@@ -35,6 +35,9 @@ See [docs/design.html](docs/design.html) for the full design.
 | 1 2 3 or click           | Pick a card                                     |
 | M                        | Sound on or off                                 |
 
+On a touch screen, drag on the left side to move. Buttons on the right
+side press the keys of the current screen. A tap acts as a left click.
+
 Build the same line twice for a second train. New lines join the track
 you have, so shared track costs nothing. Two trains on one industry share
 its output.

@@ -10,6 +10,7 @@ use rules::game::{
     BuildError, Event, Game, Input, MAX_LINK, Phase, RESCUE_COST, Steer, TOWN_RADIUS, WAVE_TIME,
     WAVES,
 };
+use touch::{is_key_down, is_key_pressed, is_mouse_button_pressed, mouse_position};
 
 const DT: f32 = 1.0 / 60.0;
 
@@ -514,6 +515,13 @@ fn input(run: &mut Run) -> Input {
 
 #[macroquad::main(conf)]
 async fn main() {
+    touch::set_buttons(&[
+        touch::key("Rescue", KeyCode::Space),
+        touch::small("Build", KeyCode::P),
+        touch::small("Back", KeyCode::Escape),
+        touch::small("Mute", KeyCode::M),
+        touch::small("Retry", KeyCode::R),
+    ]);
     let mut audio = Audio::new().await;
     let mut screen = Screen::Title;
     let mut seed = 1u64;
@@ -594,6 +602,6 @@ async fn main() {
                 }
             }
         }
-        next_frame().await;
+        touch::next_frame().await;
     }
 }

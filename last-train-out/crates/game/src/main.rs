@@ -9,6 +9,9 @@ use draw::Fx;
 use macroquad::prelude::*;
 use rules::game::{CarKind, Game, Input, Phase};
 use rules::math::{LOOP_R, V2};
+use touch::{
+    is_key_down, is_key_pressed, is_mouse_button_down, is_mouse_button_pressed, mouse_position,
+};
 
 fn conf() -> Conf {
     Conf {
@@ -111,12 +114,29 @@ async fn warm_glyph_cache() {
         13, 14, 16, 17, 18, 20, 22, 24, 26, 28, 32, 36, 42, 60, 80, 84,
     ] {
         measure_text(&chars, None, size, 1.0);
-        next_frame().await;
+        touch::next_frame().await;
     }
 }
 
 #[macroquad::main(conf)]
 async fn main() {
+    touch::set_buttons(&[
+        touch::key("Slower", KeyCode::Q),
+        touch::key("Faster", KeyCode::E),
+        touch::key("Yard", KeyCode::B),
+        touch::small("1", KeyCode::Key1),
+        touch::small("2", KeyCode::Key2),
+        touch::small("3", KeyCode::Key3),
+        touch::small("4", KeyCode::Key4),
+        touch::small("5", KeyCode::Key5),
+        touch::small("6", KeyCode::Key6),
+        touch::small("Repair", KeyCode::R),
+        touch::small("Shunt-", KeyCode::Z),
+        touch::small("Shunt+", KeyCode::X),
+        touch::small("Pause", KeyCode::P),
+        touch::small("Mute", KeyCode::M),
+        touch::small("Start", KeyCode::Enter),
+    ]);
     warm_glyph_cache().await;
     let mut audio = Audio::new().await;
     let mut screen = Screen::Title;
@@ -261,6 +281,6 @@ async fn main() {
                 }
             }
         }
-        next_frame().await;
+        touch::next_frame().await;
     }
 }

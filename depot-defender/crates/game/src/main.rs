@@ -8,6 +8,7 @@ use fx::Fx;
 use macroquad::prelude::*;
 use rules::game::{Game, Input, Phase};
 use rules::math::V2;
+use touch::{is_key_down, is_key_pressed, is_mouse_button_pressed};
 
 const DT: f32 = 1.0 / 60.0;
 const MAX_STEPS: u32 = 5;
@@ -82,10 +83,18 @@ impl Run {
 
 #[macroquad::main(window_conf)]
 async fn main() {
+    touch::set_buttons(&[
+        touch::key("Unload", KeyCode::E),
+        touch::key("Depart", KeyCode::Space),
+        touch::small("Map", KeyCode::Tab),
+        touch::small("Pause", KeyCode::P),
+        touch::small("Mute", KeyCode::M),
+        touch::small("Retry", KeyCode::R),
+    ]);
     // Draw something while the sounds are synthesized and decoded.
     clear_background(ui::BG);
     ui::warm_glyph_cache();
-    next_frame().await;
+    touch::next_frame().await;
     let mut audio = Audio::new().await;
     let mut screen = Screen::Title;
     let mut run = Run::new();
@@ -136,7 +145,7 @@ async fn main() {
                 drain_events(&mut run, &mut audio);
             }
         }
-        next_frame().await;
+        touch::next_frame().await;
     }
 }
 
