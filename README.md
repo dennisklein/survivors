@@ -5,6 +5,11 @@ Rust with macroquad and compiled to wasm.
 
 Play all games in the browser: <https://dennisklein.github.io/survivors/>
 
+All games run on phones and tablets too. The shared
+[`crates/touch/`](crates/touch/) crate adds a floating joystick on the left
+side, buttons for the keys of the current screen on the right side, and taps
+as mouse clicks. The touch controls show after the first touch.
+
 ## Games
 
 Each subdirectory is a standalone game (Rust + macroquad, wasm) with its own
