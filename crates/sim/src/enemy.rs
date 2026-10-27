@@ -9,6 +9,10 @@ pub enum EnemyKind {
     Resident,
     /// Stops, aims for 1 s, then charges in a straight line.
     Bus,
+    /// Mini-boss. Flies to the locomotive and fires slow plasma balls.
+    SmallUfo,
+    /// The boss. Removes the track under it and calls groups of residents.
+    LargeUfo,
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -37,9 +41,33 @@ impl EnemyKind {
                 touch: 15.0,
                 xp: 3,
             },
+            EnemyKind::SmallUfo => Stats {
+                hp: 250.0,
+                speed: 1.5,
+                radius: 0.6,
+                touch: 20.0,
+                xp: 25,
+            },
+            EnemyKind::LargeUfo => Stats {
+                hp: 3000.0,
+                speed: 0.8,
+                radius: 1.2,
+                touch: 30.0,
+                xp: 0,
+            },
         }
     }
+
+    /// Flying enemies ignore knockback and other enemies.
+    pub fn flies(self) -> bool {
+        matches!(self, EnemyKind::SmallUfo | EnemyKind::LargeUfo)
+    }
 }
+
+pub const UFO_FIRE_INTERVAL: f32 = 3.0;
+pub const BOSS_CALL_INTERVAL: f32 = 8.0;
+/// UFOs hover when they are this close to the target.
+const UFO_HOVER: f32 = 2.5;
 
 pub const BUS_AIM_RANGE: f32 = 7.0;
 pub const BUS_AIM_TIME: f32 = 1.0;
@@ -119,7 +147,14 @@ impl Enemy {
                 self.dir * speed
             }
             EnemyKind::Bus => self.bus(to, speed),
+            EnemyKind::SmallUfo | EnemyKind::LargeUfo => {
+                self.dir = to.norm();
+                self.dir * (speed * (to.len() / UFO_HOVER).min(1.0))
+            }
         };
+        if self.kind.flies() {
+            self.push = V2::ZERO;
+        }
         self.pos += (vel + self.push) * dt;
         self.push = self.push * (-PUSH_DECAY * dt).exp();
     }
@@ -161,6 +196,9 @@ impl Enemy {
 /// Pushes overlapping enemies apart.
 pub fn separate(enemies: &mut [Enemy], grid: &Grid) {
     for i in 0..enemies.len() {
+        if enemies[i].kind.flies() {
+            continue;
+        }
         let (p, r) = (enemies[i].pos, enemies[i].radius());
         let mut shift = V2::ZERO;
         grid.query(p, 2.0 * r, |j| {
@@ -168,6 +206,9 @@ pub fn separate(enemies: &mut [Enemy], grid: &Grid) {
                 return;
             }
             let o = &enemies[j];
+            if o.kind.flies() {
+                return;
+            }
             let d = p - o.pos;
             let min = r + o.radius();
             let dist_sq = d.len_sq();
@@ -214,6 +255,21 @@ mod tests {
         let dir = e.dir;
         e.think(V2::new(0.0, 5.0), 1.0 / 60.0);
         assert_eq!(e.dir, dir);
+    }
+
+    #[test]
+    fn ufo_ignores_knockback_and_hovers() {
+        let mut e = Enemy::new(0, EnemyKind::SmallUfo, V2::new(0.0, 0.0), 1.0);
+        e.push = V2::new(0.0, 10.0);
+        for _ in 0..600 {
+            e.think(V2::new(10.0, 0.0), 1.0 / 60.0);
+        }
+        assert!(e.pos.y.abs() < 0.2);
+        assert!(
+            e.pos.x > 7.0 && e.pos.x < 10.0,
+            "stops near the target: {:?}",
+            e.pos
+        );
     }
 
     #[test]

@@ -39,6 +39,12 @@ const RESIDENT_HAIR: Color = Color::new(0.30, 0.20, 0.14, 1.0);
 const BUS: Color = Color::new(0.95, 0.74, 0.16, 1.0);
 const BUS_WINDOW: Color = Color::new(0.20, 0.28, 0.34, 1.0);
 const AIM: Color = Color::new(1.0, 0.25, 0.2, 0.45);
+const UFO: Color = Color::new(0.62, 0.66, 0.72, 1.0);
+const UFO_DOME: Color = Color::new(0.55, 0.95, 0.75, 0.85);
+const UFO_LIGHT: Color = Color::new(1.0, 0.85, 0.3, 1.0);
+const PLASMA: Color = Color::new(0.45, 1.0, 0.55, 1.0);
+const HP_BACK: Color = Color::new(0.0, 0.0, 0.0, 0.6);
+const HP_FRONT: Color = Color::new(0.9, 0.25, 0.25, 1.0);
 const FLASH: Color = Color::new(1.0, 1.0, 1.0, 1.0);
 
 /// Cheap stable hash of a tile, for texture variation.
@@ -261,6 +267,39 @@ fn draw_enemies(world: &World) {
     for e in &world.enemies {
         draw_enemy(e);
     }
+    // Flying enemies on top, with HP bars.
+    for e in world.enemies.iter().filter(|e| e.kind.flies()) {
+        draw_ufo(e);
+    }
+    let t = get_time() as f32;
+    for b in &world.plasma {
+        let r = 0.22 + 0.04 * (t * 20.0).sin();
+        draw_circle(b.pos.x, b.pos.y, r * 1.6, Color { a: 0.3, ..PLASMA });
+        draw_circle(b.pos.x, b.pos.y, r, PLASMA);
+    }
+}
+
+fn draw_ufo(e: &Enemy) {
+    let (p, r) = (e.pos, e.radius());
+    draw_circle(p.x + 0.15, p.y + 0.25, r, Color::new(0.0, 0.0, 0.0, 0.25));
+    draw_circle(p.x, p.y, r, tint(e, UFO));
+    draw_circle_lines(p.x, p.y, r * 0.75, 0.04, Color::new(0.3, 0.32, 0.36, 1.0));
+    draw_circle(p.x, p.y, r * 0.42, tint(e, UFO_DOME));
+    let t = get_time() as f32;
+    for k in 0..8 {
+        let a = k as f32 / 8.0 * std::f32::consts::TAU + t * 1.5;
+        let q = v(p + V2::from_angle(a) * (r * 0.88));
+        draw_circle(q.x, q.y, r * 0.07, UFO_LIGHT);
+    }
+    let (w, y) = (r * 2.0, p.y - r - 0.3);
+    draw_rectangle(p.x - w / 2.0, y, w, 0.12, HP_BACK);
+    draw_rectangle(
+        p.x - w / 2.0,
+        y,
+        w * (e.hp / e.max_hp).max(0.0),
+        0.12,
+        HP_FRONT,
+    );
 }
 
 fn tint(e: &Enemy, c: Color) -> Color {
@@ -280,6 +319,7 @@ fn draw_enemy(e: &Enemy) {
             draw_box(p + e.dir * 0.05, e.dir, 0.7, 0.3, tint(e, BUS_WINDOW));
             draw_box(p + e.dir * 0.4, e.dir, 0.1, 0.44, tint(e, BUS));
         }
+        EnemyKind::SmallUfo | EnemyKind::LargeUfo => {}
     }
 }
 

@@ -2,7 +2,7 @@
 
 use crate::cards::{self, Card, MAX_WAGONS, REPAIR_HP, Upgrade, Upgrades};
 use crate::director::{self, Director};
-use crate::enemy::{self, Enemy};
+use crate::enemy::{self, BOSS_CALL_INTERVAL, Enemy, EnemyKind, UFO_FIRE_INTERVAL};
 use crate::grid::Grid;
 use crate::math::V2;
 use crate::rng::Pcg32;
@@ -21,6 +21,12 @@ pub const RAM_FACTOR: f32 = 10.0;
 pub const RAM_COOLDOWN: f32 = 0.5;
 /// After touch damage, the train cannot take touch damage for this time.
 pub const TOUCH_IFRAMES: f32 = 1.0;
+pub const SMALL_UFO_TIMES: [f32; 2] = [300.0, 480.0];
+pub const BOSS_TIME: f32 = 600.0;
+pub const PLASMA_SPEED: f32 = 3.0;
+pub const PLASMA_DAMAGE: f32 = 15.0;
+pub const PLASMA_RADIUS: f32 = 0.25;
+pub const BOSS_CALL_SIZE: u32 = 8;
 pub const CRATE_PULL_SPEED: f32 = 10.0;
 pub const MAX_CRATES: usize = 400;
 
@@ -39,6 +45,15 @@ pub enum State {
     /// Paused: the player picks one of three cards.
     LevelUp([Card; 3]),
     Lost,
+    Won,
+}
+
+/// A slow plasma ball that a UFO fires at the locomotive.
+#[derive(Clone, Copy, Debug)]
+pub struct Plasma {
+    pub pos: V2,
+    pub vel: V2,
+    pub life: f32,
 }
 
 /// Cargo that a dead enemy drops. Holds the XP value of the enemy.
@@ -55,6 +70,7 @@ pub struct World {
     pub enemies: Vec<Enemy>,
     pub wagons: Vec<Wagon>,
     pub shots: Vec<Shot>,
+    pub plasma: Vec<Plasma>,
     pub blasts: Vec<Blast>,
     pub fires: Fires,
     pub crates: Vec<Crate>,
@@ -70,6 +86,9 @@ pub struct World {
     pub max_hp: f32,
     pub kills: u32,
     iframes: f32,
+    /// Index of the next scheduled small UFO, or 2 when both came.
+    ufos_sent: usize,
+    pub boss_sent: bool,
     director: Director,
     grid: Grid,
     next_id: u32,
@@ -87,6 +106,7 @@ impl World {
             enemies: Vec::new(),
             wagons: vec![Wagon::new(WagonKind::Armoured)],
             shots: Vec::new(),
+            plasma: Vec::new(),
             blasts: Vec::new(),
             fires: Fires::new(MAP_SIZE, MAP_SIZE),
             crates: Vec::new(),
@@ -101,6 +121,8 @@ impl World {
             max_hp: START_HP,
             kills: 0,
             iframes: 0.0,
+            ufos_sent: 0,
+            boss_sent: false,
             director: Director::default(),
             grid: Grid::new(MAP_SIZE, MAP_SIZE),
             next_id: 0,
@@ -129,11 +151,14 @@ impl World {
         }
         // 3. Spawns.
         self.spawn();
+        self.schedule_ufos();
         // 4. Enemies.
         self.move_enemies();
+        self.ufo_actions();
         // 5. Weapons.
         self.fire_weapons();
         self.move_shots();
+        self.move_plasma();
         self.burn();
         // 6. Hits.
         self.ram_and_touch();
@@ -262,10 +287,96 @@ impl World {
         }
     }
 
+    pub fn boss(&self) -> Option<&Enemy> {
+        self.enemies.iter().find(|e| e.kind == EnemyKind::LargeUfo)
+    }
+
+    fn schedule_ufos(&mut self) {
+        let size = self.map.width() as f32;
+        if let Some(&at) = SMALL_UFO_TIMES.get(self.ufos_sent)
+            && self.time >= at
+        {
+            self.ufos_sent += 1;
+            let p = director::ring_point(self.head_pos(), size, &mut self.rng);
+            self.spawn_enemy(EnemyKind::SmallUfo, p);
+        }
+        if !self.boss_sent && self.time >= BOSS_TIME {
+            self.boss_sent = true;
+            let p = director::ring_point(self.head_pos(), size, &mut self.rng);
+            let e = Enemy::new(self.next_id, EnemyKind::LargeUfo, p, 1.0);
+            self.next_id += 1;
+            self.enemies.push(e);
+        }
+    }
+
+    /// Small UFOs fire plasma. The boss removes track and calls residents.
+    fn ufo_actions(&mut self) {
+        let loco = self.train.slot(0).pos;
+        let mut calls = Vec::new();
+        for e in &mut self.enemies {
+            if e.timer > 0.0 {
+                continue;
+            }
+            match e.kind {
+                EnemyKind::SmallUfo => {
+                    e.timer = UFO_FIRE_INTERVAL;
+                    self.plasma.push(Plasma {
+                        pos: e.pos,
+                        vel: (loco - e.pos).norm() * PLASMA_SPEED,
+                        life: 6.0,
+                    });
+                }
+                EnemyKind::LargeUfo => {
+                    e.timer = BOSS_CALL_INTERVAL;
+                    calls.push(e.pos);
+                }
+                _ => {}
+            }
+        }
+        for at in calls {
+            for _ in 0..BOSS_CALL_SIZE {
+                let off = V2::from_angle(self.rng.range(0.0, std::f32::consts::TAU))
+                    * self.rng.range(1.5, 3.0);
+                self.spawn_enemy(EnemyKind::Resident, at + off);
+            }
+        }
+        if let Some(b) = self.boss() {
+            let (p, r) = (b.pos, b.radius());
+            for y in (p.y - r).floor() as i32..=(p.y + r).floor() as i32 {
+                for x in (p.x - r).floor() as i32..=(p.x + r).floor() as i32 {
+                    self.map.clear_track((x, y));
+                }
+            }
+        }
+    }
+
+    fn move_plasma(&mut self) {
+        let mut hurt = 0.0;
+        let cars = self.train.cars();
+        self.plasma.retain_mut(|b| {
+            b.pos += b.vel * DT;
+            b.life -= DT;
+            let reach = PLASMA_RADIUS + CAR_RADIUS;
+            if cars.iter().any(|c| c.pos.dist_sq(b.pos) < reach * reach) {
+                hurt += PLASMA_DAMAGE;
+                return false;
+            }
+            b.life > 0.0
+        });
+        if hurt > 0.0 {
+            self.damage(hurt);
+        }
+    }
+
     fn move_enemies(&mut self) {
         let cars: Vec<V2> = self.train.cars().iter().map(|c| c.pos).collect();
+        let loco = self.train.slot(0).pos;
         let size = self.map.width() as f32;
         for e in &mut self.enemies {
+            if e.kind.flies() {
+                e.think(loco, DT);
+                continue;
+            }
             let target = cars
                 .iter()
                 .copied()
@@ -307,8 +418,10 @@ impl World {
                 if e.hp > 0.0 {
                     hurt = hurt.max(e.stats().touch);
                 }
-                // Enemies cannot stand on the train.
-                e.pos = car.pos + away * reach;
+                // Enemies cannot stand on the train. UFOs fly over it.
+                if !e.kind.flies() {
+                    e.pos = car.pos + away * reach;
+                }
             });
         }
         if hurt > 0.0 && self.iframes <= 0.0 {
@@ -438,7 +551,11 @@ impl World {
             if self.enemies[i].hp <= 0.0 {
                 let e = self.enemies.swap_remove(i);
                 self.kills += 1;
-                self.drop_crate(e.pos, e.stats().xp);
+                if e.kind == EnemyKind::LargeUfo {
+                    self.state = State::Won;
+                } else {
+                    self.drop_crate(e.pos, e.stats().xp);
+                }
             } else {
                 i += 1;
             }
@@ -461,7 +578,6 @@ fn nearest(enemies: &[Enemy], p: V2, range: f32, n: usize) -> Vec<usize> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::enemy::EnemyKind;
 
     fn run(w: &mut World, steps: usize, turn: impl Fn(usize) -> Option<Turn>) {
         for i in 0..steps {
@@ -533,7 +649,6 @@ mod tests {
 #[cfg(test)]
 mod weapon_tests {
     use super::*;
-    use crate::enemy::EnemyKind;
 
     /// A world with no spawns and one wagon of `kind`.
     fn quiet(kind: WagonKind) -> World {
@@ -661,5 +776,74 @@ mod level_tests {
         w.state = State::LevelUp([Card::LevelWagon(1), Card::Repair, Card::Repair]);
         w.pick_card(0);
         assert_eq!(w.wagons[1].level, 2);
+    }
+}
+
+#[cfg(test)]
+mod ufo_tests {
+    use super::*;
+
+    #[test]
+    fn ufos_come_on_time_and_the_boss_wins_the_run() {
+        let mut w = World::new(2);
+        w.time = SMALL_UFO_TIMES[0] - DT / 2.0;
+        w.step(&Input::default());
+        assert_eq!(
+            w.enemies
+                .iter()
+                .filter(|e| e.kind == EnemyKind::SmallUfo)
+                .count(),
+            1
+        );
+        w.time = BOSS_TIME;
+        w.step(&Input::default());
+        assert_eq!(
+            w.enemies
+                .iter()
+                .filter(|e| e.kind == EnemyKind::SmallUfo)
+                .count(),
+            2
+        );
+        assert!(w.boss().is_some());
+        w.enemies
+            .iter_mut()
+            .find(|e| e.kind == EnemyKind::LargeUfo)
+            .unwrap()
+            .hp = 0.0;
+        w.step(&Input::default());
+        assert_eq!(w.state, State::Won);
+    }
+
+    #[test]
+    fn small_ufo_fires_plasma_that_hurts() {
+        let mut w = World::new(2);
+        let loco = w.train.slot(0).pos;
+        w.spawn_enemy(EnemyKind::SmallUfo, loco + V2::new(5.0, 0.0));
+        w.step(&Input::default());
+        assert_eq!(w.plasma.len(), 1);
+        let hp = w.hp;
+        for _ in 0..90 {
+            w.step(&Input::default());
+        }
+        assert!(w.plasma.is_empty(), "the plasma ball hit the train");
+        assert!(w.hp <= hp - PLASMA_DAMAGE);
+    }
+
+    #[test]
+    fn boss_removes_track_and_calls_residents() {
+        let mut w = World::new(2);
+        let c = MAP_SIZE / 2;
+        let at = V2::new(c as f32 - 3.5, c as f32 + 0.5);
+        assert_ne!(w.map.track(c - 4, c), 0);
+        let e = Enemy::new(99, EnemyKind::LargeUfo, at, 1.0);
+        w.enemies.push(e);
+        w.step(&Input::default());
+        assert_eq!(w.map.track(c - 4, c), 0);
+        let residents = w
+            .enemies
+            .iter()
+            .filter(|e| e.kind == EnemyKind::Resident)
+            .count();
+        assert!(residents >= BOSS_CALL_SIZE as usize);
     }
 }
