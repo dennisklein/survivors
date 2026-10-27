@@ -5,6 +5,8 @@ own track. Wagons are weapons. Survive ten minutes and beat the boss.
 
 See [docs/design.html](docs/design.html) for the game design.
 
+Play all games in the browser: <https://dennisklein.github.io/survivors/>
+
 ## Play
 
 ```sh
@@ -54,3 +56,7 @@ Each subdirectory is a standalone game (Rust + macroquad, wasm) with its own
 | `mise run dev` | Rebuild the web bundle on change |
 | `mise run ci` | lint, test and web build |
 | `mise run build-all` | Build every game subdirectory into its `dist/` |
+| `mise run site` | Build all games and the landing page into `site/` |
+
+Every push to `main` deploys `site/` to GitHub Pages
+([`.github/workflows/pages.yml`](.github/workflows/pages.yml)).
