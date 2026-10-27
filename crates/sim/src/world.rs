@@ -1,5 +1,6 @@
 //! The world: map, train, enemies and the fixed-step simulation.
 
+use crate::cards::{self, Card, MAX_WAGONS, REPAIR_HP, Upgrade, Upgrades};
 use crate::director::{self, Director};
 use crate::enemy::{self, Enemy};
 use crate::grid::Grid;
@@ -20,7 +21,8 @@ pub const RAM_FACTOR: f32 = 10.0;
 pub const RAM_COOLDOWN: f32 = 0.5;
 /// After touch damage, the train cannot take touch damage for this time.
 pub const TOUCH_IFRAMES: f32 = 1.0;
-pub const MAX_WAGONS: usize = 5;
+pub const CRATE_PULL_SPEED: f32 = 10.0;
+pub const MAX_CRATES: usize = 400;
 
 /// Player input for one step.
 #[derive(Clone, Copy, Debug, Default)]
@@ -34,7 +36,17 @@ pub struct Input {
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum State {
     Running,
+    /// Paused: the player picks one of three cards.
+    LevelUp([Card; 3]),
     Lost,
+}
+
+/// Cargo that a dead enemy drops. Holds the XP value of the enemy.
+#[derive(Clone, Copy, Debug)]
+pub struct Crate {
+    pub pos: V2,
+    pub xp: u32,
+    pub pulled: bool,
 }
 
 pub struct World {
@@ -45,8 +57,12 @@ pub struct World {
     pub shots: Vec<Shot>,
     pub blasts: Vec<Blast>,
     pub fires: Fires,
-    /// Weapon cooldown factor from upgrades.
-    pub cooldown_factor: f32,
+    pub crates: Vec<Crate>,
+    pub upgrades: Upgrades,
+    pub level: u32,
+    pub xp: u32,
+    /// Level-ups that still wait for a card.
+    pending: u32,
     pub rng: Pcg32,
     pub time: f32,
     pub state: State,
@@ -73,7 +89,11 @@ impl World {
             shots: Vec::new(),
             blasts: Vec::new(),
             fires: Fires::new(MAP_SIZE, MAP_SIZE),
-            cooldown_factor: 1.0,
+            crates: Vec::new(),
+            upgrades: Upgrades::default(),
+            level: 1,
+            xp: 0,
+            pending: 0,
             rng,
             time: 0.0,
             state: State::Running,
@@ -118,6 +138,90 @@ impl World {
         // 6. Hits.
         self.ram_and_touch();
         self.remove_dead();
+        // 7. Cargo and XP.
+        self.collect_crates();
+    }
+
+    /// XP needed for the next level.
+    pub fn xp_needed(&self) -> u32 {
+        cards::xp_needed(self.level)
+    }
+
+    /// Applies card `i` of the level-up choice and resumes the run.
+    pub fn pick_card(&mut self, i: usize) {
+        let State::LevelUp(cards) = self.state else {
+            return;
+        };
+        let Some(&card) = cards.get(i) else {
+            return;
+        };
+        match card {
+            Card::NewWagon(k) => self.add_wagon(k),
+            Card::LevelWagon(slot) => self.wagons[slot].level += 1,
+            Card::Upgrade(u) => {
+                self.upgrades.0[u as usize] += 1;
+                if u == Upgrade::Armour {
+                    self.max_hp += 20.0;
+                    self.hp = (self.hp + 20.0).min(self.max_hp);
+                }
+                self.train.speed_bonus = self.upgrades.speed_bonus();
+            }
+            Card::Repair => self.hp = (self.hp + REPAIR_HP).min(self.max_hp),
+        }
+        self.pending -= 1;
+        self.state = State::Running;
+        self.offer_cards();
+    }
+
+    fn offer_cards(&mut self) {
+        if self.pending > 0 && self.state == State::Running {
+            self.state = State::LevelUp(cards::roll(&self.wagons, &self.upgrades, &mut self.rng));
+        }
+    }
+
+    fn collect_crates(&mut self) {
+        let radius = self.upgrades.pickup_radius();
+        let cars: Vec<V2> = self.train.cars().iter().map(|c| c.pos).collect();
+        let mut gained = 0;
+        self.crates.retain_mut(|c| {
+            let near = cars
+                .iter()
+                .copied()
+                .min_by(|a, b| a.dist_sq(c.pos).total_cmp(&b.dist_sq(c.pos)))
+                .unwrap_or(c.pos);
+            let d = near.dist(c.pos);
+            c.pulled |= d < radius;
+            if !c.pulled {
+                return true;
+            }
+            if d < 0.35 {
+                gained += c.xp;
+                return false;
+            }
+            c.pos += (near - c.pos).norm() * (CRATE_PULL_SPEED * DT).min(d);
+            true
+        });
+        self.xp += gained;
+        while self.xp >= self.xp_needed() {
+            self.xp -= self.xp_needed();
+            self.level += 1;
+            self.pending += 1;
+        }
+        self.offer_cards();
+    }
+
+    fn drop_crate(&mut self, pos: V2, xp: u32) {
+        if self.crates.len() >= MAX_CRATES {
+            // Too much cargo on the map: add the XP to an old crate.
+            let i = self.rng.below(self.crates.len() as u32) as usize;
+            self.crates[i].xp += xp;
+        } else {
+            self.crates.push(Crate {
+                pos,
+                xp,
+                pulled: false,
+            });
+        }
     }
 
     pub fn damage(&mut self, amount: f32) {
@@ -214,7 +318,7 @@ impl World {
     }
 
     fn fire_weapons(&mut self) {
-        let factor = self.cooldown_factor;
+        let factor = self.upgrades.cooldown_factor();
         for slot in 0..self.wagons.len() {
             let car = *self.train.slot(slot + 1);
             let w = &mut self.wagons[slot];
@@ -332,8 +436,9 @@ impl World {
         let mut i = 0;
         while i < self.enemies.len() {
             if self.enemies[i].hp <= 0.0 {
-                self.enemies.swap_remove(i);
+                let e = self.enemies.swap_remove(i);
                 self.kills += 1;
+                self.drop_crate(e.pos, e.stats().xp);
             } else {
                 i += 1;
             }
@@ -491,5 +596,70 @@ mod weapon_tests {
         }
         assert_eq!(w.wagons.len(), MAX_WAGONS);
         assert_eq!(w.train.car_count(), MAX_WAGONS + 1);
+    }
+}
+
+#[cfg(test)]
+mod level_tests {
+    use super::*;
+
+    #[test]
+    fn crates_give_xp_and_level_up_pauses() {
+        let mut w = World::new(8);
+        let head = w.head_pos();
+        w.drop_crate(head + V2::new(0.5, 0.5), 5);
+        for _ in 0..5 {
+            w.step(&Input::default());
+        }
+        assert!(w.crates.is_empty());
+        assert_eq!(w.level, 2);
+        assert!(matches!(w.state, State::LevelUp(_)));
+        let t = w.time;
+        w.step(&Input::default());
+        assert_eq!(w.time, t, "paused while the cards show");
+        w.pick_card(0);
+        assert_eq!(w.state, State::Running);
+    }
+
+    #[test]
+    fn far_crates_stay() {
+        let mut w = World::new(8);
+        let head = w.head_pos();
+        w.drop_crate(head + V2::new(0.0, 5.0), 1);
+        w.step(&Input::default());
+        assert_eq!(w.crates.len(), 1);
+        assert!(!w.crates[0].pulled);
+    }
+
+    #[test]
+    fn several_level_ups_offer_several_choices() {
+        let mut w = World::new(8);
+        let head = w.head_pos();
+        w.drop_crate(head, 5 + 9);
+        w.step(&Input::default());
+        assert_eq!(w.level, 3);
+        w.pick_card(0);
+        assert!(matches!(w.state, State::LevelUp(_)));
+        w.pick_card(0);
+        assert_eq!(w.state, State::Running);
+    }
+
+    #[test]
+    fn cards_apply() {
+        let mut w = World::new(8);
+        w.hp = 50.0;
+        w.pending = 1;
+        w.state = State::LevelUp([Card::Upgrade(Upgrade::Armour), Card::Repair, Card::Repair]);
+        w.pick_card(0);
+        assert_eq!((w.hp, w.max_hp), (70.0, 120.0));
+        w.pending = 1;
+        w.state = State::LevelUp([Card::NewWagon(WagonKind::Steam), Card::Repair, Card::Repair]);
+        w.pick_card(0);
+        assert_eq!(w.wagons.len(), 2);
+        assert_eq!(w.train.car_count(), 3);
+        w.pending = 1;
+        w.state = State::LevelUp([Card::LevelWagon(1), Card::Repair, Card::Repair]);
+        w.pick_card(0);
+        assert_eq!(w.wagons[1].level, 2);
     }
 }

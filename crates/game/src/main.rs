@@ -1,8 +1,9 @@
 mod render;
+mod ui;
 
 use macroquad::prelude::*;
 use sim::train::Turn;
-use sim::world::{DT, Input, World};
+use sim::world::{DT, Input, State, World};
 
 /// At most this many simulation steps per frame, so a slow frame does not freeze the game.
 const MAX_STEPS: u32 = 5;
@@ -52,10 +53,17 @@ async fn main() {
         set_camera(&cam);
         render::draw_world(&world, &cam);
         set_default_camera();
+        if let State::LevelUp(cards) = world.state
+            && let Some(i) = ui::level_up(&world, &cards)
+        {
+            world.pick_card(i);
+            acc = 0.0;
+        }
         draw_text(
             format!(
-                "HP {:.0}   speed {:.1}   A/D turn   S reverse",
+                "HP {:.0}   level {}   speed {:.1}   A/D turn   S reverse",
                 world.hp,
+                world.level,
                 world.train.speed()
             ),
             16.0,

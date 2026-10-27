@@ -29,6 +29,8 @@ const HOPPER: Color = Color::new(0.36, 0.27, 0.20, 1.0);
 const COAL: Color = Color::new(0.10, 0.10, 0.10, 1.0);
 const STEAM: Color = Color::new(0.34, 0.45, 0.62, 1.0);
 const DOME: Color = Color::new(0.85, 0.88, 0.92, 1.0);
+const CRATE: Color = Color::new(0.62, 0.45, 0.24, 1.0);
+const CRATE_BAND: Color = Color::new(0.85, 0.70, 0.35, 1.0);
 const SHOT: Color = Color::new(1.0, 0.92, 0.45, 1.0);
 const FIRE: Color = Color::new(1.0, 0.45, 0.10, 1.0);
 const EMBER: Color = Color::new(1.0, 0.80, 0.25, 1.0);
@@ -79,6 +81,7 @@ pub fn draw_world(world: &World, cam: &Camera2D) {
     draw_terrain(world, view);
     draw_track(world, view);
     draw_fires(world);
+    draw_crates(world);
     draw_ghost(world);
     draw_train(world);
     draw_enemies(world);
@@ -326,5 +329,13 @@ fn draw_shots(world: &World) {
             0.08,
             Color::new(1.0, 1.0, 1.0, a),
         );
+    }
+}
+
+fn draw_crates(world: &World) {
+    for c in &world.crates {
+        let s = 0.18 + 0.03 * (c.xp.min(25) as f32).sqrt();
+        draw_rectangle(c.pos.x - s / 2.0, c.pos.y - s / 2.0, s, s, CRATE);
+        draw_rectangle(c.pos.x - s / 2.0, c.pos.y - 0.025, s, 0.05, CRATE_BAND);
     }
 }
