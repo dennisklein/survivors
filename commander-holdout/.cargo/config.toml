@@ -1,0 +1,4 @@
+# quad-snd declares its JS audio imports without a wasm import module, so
+# newer linkers need to be told they are provided by the JS loader.
+[target.wasm32-unknown-unknown]
+rustflags = ["-C", "link-arg=--allow-undefined"]
