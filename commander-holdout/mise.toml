@@ -1,0 +1,47 @@
+[tools]
+rust = { version = "1.99.1", targets = "wasm32-unknown-unknown", components = "clippy,rustfmt" }
+miniserve = "0.35.0"
+watchexec = "2.8.0"
+
+[tasks.run]
+description = "Run the game natively (needs libasound2-dev on Linux)"
+run = "cargo run -p commander-holdout --release"
+
+[tasks.test]
+description = "Run all unit tests"
+run = "cargo test --workspace"
+
+[tasks.fmt]
+description = "Format all code"
+run = "cargo fmt --all"
+
+[tasks.lint]
+description = "Check format and run clippy"
+run = [
+  "cargo fmt --all --check",
+  "cargo clippy --workspace --all-targets -- -D warnings",
+]
+
+[tasks.build]
+description = "Build the browser game into dist/"
+sources = ["crates/**/*.rs", "crates/**/Cargo.toml", "Cargo.*", "web/*", "assets/*"]
+outputs = ["dist/commander-holdout.wasm"]
+run = [
+  "cargo build -p commander-holdout --release --target wasm32-unknown-unknown",
+  "mkdir -p dist/assets",
+  "cp target/wasm32-unknown-unknown/release/commander-holdout.wasm web/index.html web/mq_js_bundle.js dist/",
+  "cp assets/* dist/assets/",
+]
+
+[tasks.serve]
+description = "Build and serve the browser game on http://localhost:8080"
+depends = ["build"]
+run = "miniserve --index index.html --port 8080 dist"
+
+[tasks.dev]
+description = "Rebuild on change (run `serve` in a second terminal)"
+run = "mise watch build"
+
+[tasks.ci]
+description = "Run lint, tests and the web build"
+depends = ["lint", "test", "build"]
