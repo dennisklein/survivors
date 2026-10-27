@@ -1,6 +1,7 @@
 //! Draws the world with original programmer art. One world unit is one tile.
 
 use macroquad::prelude::*;
+use sim::enemy::{BUS_CHARGE_SPEED, BUS_CHARGE_TIME, Enemy, EnemyKind, Phase};
 use sim::math::V2;
 use sim::track::{self, Piece, Terrain};
 use sim::world::World;
@@ -22,6 +23,19 @@ const GHOST: Color = Color::new(0.35, 0.65, 1.0, 0.65);
 const LOCO: Color = Color::new(0.69, 0.23, 0.18, 1.0);
 const LOCO_CAB: Color = Color::new(0.45, 0.13, 0.10, 1.0);
 const WAGON: Color = Color::new(0.38, 0.42, 0.50, 1.0);
+const RESIDENT: Color = Color::new(0.80, 0.58, 0.42, 1.0);
+const RESIDENT_HAIR: Color = Color::new(0.30, 0.20, 0.14, 1.0);
+const BUS: Color = Color::new(0.95, 0.74, 0.16, 1.0);
+const BUS_WINDOW: Color = Color::new(0.20, 0.28, 0.34, 1.0);
+const AIM: Color = Color::new(1.0, 0.25, 0.2, 0.45);
+const FLASH: Color = Color::new(1.0, 1.0, 1.0, 1.0);
+
+/// Cheap stable hash of a tile, for texture variation.
+fn hash(x: i32, y: i32) -> u32 {
+    let mut h = (x as u32).wrapping_mul(374_761_393) ^ (y as u32).wrapping_mul(668_265_263);
+    h = (h ^ (h >> 13)).wrapping_mul(1_274_126_177);
+    h ^ (h >> 16)
+}
 
 pub fn v(p: V2) -> Vec2 {
     vec2(p.x, p.y)
@@ -57,6 +71,7 @@ pub fn draw_world(world: &World, cam: &Camera2D) {
     draw_track(world, view);
     draw_ghost(world);
     draw_train(world);
+    draw_enemies(world);
 }
 
 fn draw_terrain(world: &World, (x0, y0, x1, y1): (i32, i32, i32, i32)) {
@@ -66,7 +81,7 @@ fn draw_terrain(world: &World, (x0, y0, x1, y1): (i32, i32, i32, i32)) {
             let (fx, fy) = (x as f32, y as f32);
             match map.terrain(x, y) {
                 Terrain::Grass => {
-                    let shade = GRASS[((x * 7 + y * 13 + x * y) % 3) as usize];
+                    let shade = GRASS[(hash(x, y) % 3) as usize];
                     draw_rectangle(fx, fy, 1.0, 1.0, shade);
                 }
                 Terrain::Water => {
@@ -204,4 +219,36 @@ fn draw_train(world: &World) {
     draw_box(loco.pos - fwd * 0.24, fwd, 0.3, 0.5, LOCO_CAB);
     let chimney = v(loco.pos + fwd * 0.26);
     draw_circle(chimney.x, chimney.y, 0.09, BLACK);
+}
+
+fn draw_enemies(world: &World) {
+    for e in &world.enemies {
+        if e.kind == EnemyKind::Bus && e.phase == Phase::Aim {
+            let end = v(e.pos + e.dir * (BUS_CHARGE_SPEED * BUS_CHARGE_TIME));
+            draw_line(e.pos.x, e.pos.y, end.x, end.y, 0.12, AIM);
+        }
+    }
+    for e in &world.enemies {
+        draw_enemy(e);
+    }
+}
+
+fn tint(e: &Enemy, c: Color) -> Color {
+    if e.flash > 0.0 { FLASH } else { c }
+}
+
+fn draw_enemy(e: &Enemy) {
+    let p = e.pos;
+    match e.kind {
+        EnemyKind::Resident => {
+            draw_circle(p.x, p.y, e.radius(), tint(e, RESIDENT));
+            let hair = v(p - e.dir * 0.08);
+            draw_circle(hair.x, hair.y, e.radius() * 0.6, tint(e, RESIDENT_HAIR));
+        }
+        EnemyKind::Bus => {
+            draw_box(p, e.dir, 0.95, 0.48, tint(e, BUS));
+            draw_box(p + e.dir * 0.05, e.dir, 0.7, 0.3, tint(e, BUS_WINDOW));
+            draw_box(p + e.dir * 0.4, e.dir, 0.1, 0.44, tint(e, BUS));
+        }
+    }
 }
