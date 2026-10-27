@@ -44,3 +44,14 @@ run = "mise watch build:web"
 [tasks.ci]
 description = "Run lint, tests and the web build"
 depends = ["lint", "test", "build:web"]
+
+[tasks.build-all]
+description = "Build every game in a subdirectory into its own dist/"
+run = '''
+set -e
+for d in */; do
+  [ -f "$d/mise.toml" ] && [ -f "$d/Cargo.toml" ] || continue
+  echo "==> ${d%/}"
+  (cd "$d" && mise run build)
+done
+'''
