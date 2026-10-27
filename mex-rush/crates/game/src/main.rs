@@ -9,7 +9,7 @@ use sim::game::{
     WORLD,
 };
 use sim::math::V2;
-use touch::{is_key_down, is_key_pressed, is_mouse_button_pressed};
+use touch::{is_key_down, is_key_pressed, is_mouse_button_pressed, mouse_position};
 
 const BG: Color = Color::new(0.08, 0.1, 0.09, 1.0);
 const METAL: Color = Color::new(0.55, 0.85, 1.0, 1.0);
@@ -48,7 +48,7 @@ fn v(p: V2) -> Vec2 {
     vec2(p.x, p.y)
 }
 
-fn read_input() -> Input {
+fn read_input(leveling: bool) -> Input {
     let mut d = V2::ZERO;
     if is_key_down(KeyCode::W) || is_key_down(KeyCode::Up) {
         d.y -= 1.0;
@@ -67,8 +67,19 @@ fn read_input() -> Input {
         dir: d,
         build: is_key_pressed(KeyCode::E) || is_key_pressed(KeyCode::Space),
         fortify: is_key_pressed(KeyCode::R),
-        pick: keys.iter().position(|k| is_key_pressed(*k)),
+        pick: keys.iter().position(|k| is_key_pressed(*k)).or_else(|| {
+            (leveling && is_mouse_button_pressed(MouseButton::Left))
+                .then(|| card_at(mouse_position().into()))
+                .flatten()
+        }),
     }
+}
+
+/// The level-up card under `p`, laid out as in `draw_level_up`.
+fn card_at(p: Vec2) -> Option<usize> {
+    let cw = 260.0;
+    let x0 = (screen_width() - (cw * 3.0 + 40.0)) / 2.0;
+    (0..3).find(|&i| Rect::new(x0 + i as f32 * (cw + 20.0), 200.0, cw, 150.0).contains(p))
 }
 
 fn any_input() -> bool {
@@ -175,7 +186,7 @@ impl App {
                     }
                 }
                 _ => {
-                    let input = read_input();
+                    let input = read_input(self.game.phase == Phase::LevelUp);
                     self.game.step(dt, &input);
                 }
             },

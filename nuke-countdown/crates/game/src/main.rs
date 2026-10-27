@@ -10,7 +10,7 @@ use sim::game::{
     metal_needed, xp_needed,
 };
 use sim::math::{V2, v2};
-use touch::{is_key_down, is_key_pressed, is_mouse_button_pressed};
+use touch::{is_key_down, is_key_pressed, is_mouse_button_pressed, mouse_position};
 
 const BG: Color = Color::new(0.08, 0.09, 0.07, 1.0);
 const GRID: Color = Color::new(0.14, 0.16, 0.12, 1.0);
@@ -137,7 +137,11 @@ impl App {
             ..Default::default()
         };
         if self.game.phase == Phase::LevelUp {
-            input.choice = digit;
+            input.choice = digit.or_else(|| {
+                is_mouse_button_pressed(MouseButton::Left)
+                    .then(|| choice_at(mouse_position().into()))
+                    .flatten()
+            });
         } else if self.game.phase == Phase::Playing {
             if is_key_pressed(KeyCode::B) {
                 self.build_menu = !self.build_menu;
@@ -676,6 +680,15 @@ fn draw_title(t: f32) {
         18.0,
         GRAY,
     );
+}
+
+/// The level-up row under `p`, laid out as in the level-up overlay.
+fn choice_at(p: Vec2) -> Option<usize> {
+    let (w, h) = (screen_width(), screen_height());
+    (0..3).find(|&i| {
+        let top = h / 2.0 - 58.0 + i as f32 * 40.0;
+        Rect::new(w / 2.0 - 260.0, top, 520.0, 40.0).contains(p)
+    })
 }
 
 #[macroquad::main(window_conf)]

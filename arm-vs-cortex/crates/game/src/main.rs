@@ -9,7 +9,7 @@ use sim::game::{
     Phase, ShotStyle, Team, UnitKind, WORLD, commander_weapon, xp_needed,
 };
 use sim::math::{V2, v2};
-use touch::{is_key_down, is_key_pressed, is_mouse_button_pressed};
+use touch::{is_key_down, is_key_pressed, is_mouse_button_pressed, mouse_position};
 
 const BG: Color = Color::new(0.07, 0.08, 0.06, 1.0);
 const GRID: Color = Color::new(0.13, 0.15, 0.11, 1.0);
@@ -189,9 +189,15 @@ impl App {
         if is_key_down(KeyCode::D) || is_key_down(KeyCode::Right) {
             dir.x += 1.0;
         }
+        let leveling = matches!(self.game.phase, Phase::LevelUp(_));
         let choice = [KeyCode::Key1, KeyCode::Key2, KeyCode::Key3]
             .iter()
-            .position(|k| is_key_pressed(*k));
+            .position(|k| is_key_pressed(*k))
+            .or_else(|| {
+                (leveling && is_mouse_button_pressed(MouseButton::Left))
+                    .then(|| card_at(mouse_position().into()))
+                    .flatten()
+            });
         Input {
             dir,
             capture: is_key_down(KeyCode::C),
@@ -728,6 +734,14 @@ impl App {
             }
         }
     }
+}
+
+/// The level-up card under `p`, laid out as in the level-up overlay.
+fn card_at(p: Vec2) -> Option<usize> {
+    let w = 300.0;
+    let x0 = (screen_width() - (w * 3.0 + 40.0)) / 2.0;
+    let y = screen_height() * 0.35;
+    (0..3).find(|&i| Rect::new(x0 + i as f32 * (w + 20.0), y, w, 140.0).contains(p))
 }
 
 #[macroquad::main(window_conf)]
