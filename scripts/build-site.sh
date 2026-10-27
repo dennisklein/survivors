@@ -21,10 +21,6 @@ card() { # <slug> <title> <pitch>
     "$1" "$(esc <<<"$2")" "$(esc <<<"$3")"
 }
 
-copy_game dist transport-survivors
-cards_main=$(card transport-survivors "Transport Survivors" \
-  "Drive a train that lays its own track. Wagons are weapons. Survive ten minutes and beat the boss.")
-
 cards_trains=""
 cards_bar=""
 while IFS='|' read -r _ dir title theme pitch _; do
@@ -68,10 +64,6 @@ cat >"$out/index.html" <<HTML
   <main>
     <h1>Survivors</h1>
     <p class="lead">Survivor-like games for the browser, written in Rust with macroquad. Pick a game to play.</p>
-    <h2>Transport Survivors</h2>
-    <div class="grid">
-$cards_main
-    </div>
     <h2>Trains</h2>
     <div class="grid">
 $cards_trains    </div>

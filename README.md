@@ -5,18 +5,6 @@ Rust with macroquad and compiled to wasm.
 
 Play all games in the browser: <https://dennisklein.github.io/survivors/>
 
-## Transport Survivors
-
-The game in the repository root. You drive a train that lays its own track.
-Wagons are weapons. Survive ten minutes and beat the boss. See
-[docs/design.html](docs/design.html) for the game design.
-
-```sh
-mise install      # Rust, wasm target, miniserve, watchexec
-mise run serve    # build for the browser, open http://localhost:8080
-mise run run      # or run natively
-```
-
 ## Games
 
 Each subdirectory is a standalone game (Rust + macroquad, wasm) with its own
@@ -27,6 +15,7 @@ Each subdirectory is a standalone game (Rust + macroquad, wasm) with its own
 
 | Dir | Title | Theme | Pitch |
 |---|---|---|---|
+| [`transport-survivors/`](transport-survivors/) | Transport Survivors | Trains | Drive a train that lays its own track; wagons are weapons. Survive 10 minutes, beat the boss. |
 | [`freight-siege/`](freight-siege/) | Freight Siege | Trains | Connect stations with routes; every wagon is a turret. Plan paused, survive 10 years. |
 | [`depot-defender/`](depot-defender/) | Depot Defender | Trains | Defend a rail depot; unload timetabled supply trains for upgrades. |
 | [`cargo-cascade/`](cargo-cascade/) | Cargo Cascade | Trains | Feed the coal-power-factory-town chain; supplied towns light defensive auras. |
@@ -51,13 +40,12 @@ Each subdirectory is a standalone game (Rust + macroquad, wasm) with its own
 
 ## Develop
 
+Each game has its own tasks (`run`, `serve`, `test`, `lint`, `dev`, `ci`); run
+them inside its directory. From the root:
+
 | Task | What it does |
 |---|---|
-| `mise run test` | Unit tests (the `sim` crate holds all game rules) |
-| `mise run lint` | rustfmt check and clippy |
-| `mise run dev` | Rebuild the web bundle on change |
-| `mise run ci` | lint, test and web build |
-| `mise run build-all` | Build every game subdirectory into its `dist/` |
+| `mise run build-all` | Build every game into its `dist/` |
 | `mise run site` | Build all games and the landing page into `site/` |
 
 Every push to `main` deploys `site/` to GitHub Pages
