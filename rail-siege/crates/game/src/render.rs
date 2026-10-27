@@ -104,6 +104,8 @@ pub struct Overlay<'a> {
     /// The station or tile under the mouse.
     pub hover_station: Option<usize>,
     pub hover_tile: Option<Tile>,
+    /// The line whose train panel is open.
+    pub selected: Option<usize>,
 }
 
 pub fn draw_world(world: &World, o: &Overlay) {
@@ -121,6 +123,9 @@ pub fn draw_world(world: &World, o: &Overlay) {
     draw_fires(world);
     let owned = world.levels.wagons();
     let max_hp = world.train_hp();
+    if let Some(l) = o.selected.and_then(|i| world.lines.get(i)) {
+        draw_route(&l.route, Color { a: 0.35, ..GHOST });
+    }
     for l in &world.lines {
         draw_train(l, &owned, max_hp);
     }

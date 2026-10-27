@@ -115,21 +115,34 @@ struct Draft {
     ghost_end: Option<Tile>,
 }
 
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum Screen {
+    Title,
+    Run,
+}
+
 struct Game {
     world: World,
     view: View,
+    screen: Screen,
     draft: Option<Draft>,
+    /// The line whose train panel is open.
+    selected: Option<usize>,
+    panel: Option<Rect>,
     paused: bool,
     acc: f32,
     toast: Option<(String, f32)>,
 }
 
 impl Game {
-    fn new() -> Self {
+    fn new(screen: Screen) -> Self {
         Self {
             world: World::new((macroquad::miniquad::date::now() * 1000.0) as u64),
             view: View::new(),
+            screen,
             draft: None,
+            selected: None,
+            panel: None,
             paused: false,
             acc: 0.0,
             toast: None,
@@ -141,7 +154,7 @@ impl Game {
     }
 
     fn speed(&self) -> f32 {
-        if self.paused {
+        if self.paused || self.screen == Screen::Title {
             0.0
         } else if self.draft.is_some() {
             BUILD_SPEED
@@ -150,16 +163,45 @@ impl Game {
         }
     }
 
-    fn mouse_tile(&self) -> Option<Tile> {
+    fn speed_label(&self) -> &'static str {
+        if self.paused {
+            "PAUSED"
+        } else if self.draft.is_some() {
+            "x0.25 build"
+        } else {
+            "x1"
+        }
+    }
+
+    fn mouse_world(&self) -> V2 {
         let m = self.view.camera().screen_to_world(mouse_position().into());
+        V2::new(m.x, m.y)
+    }
+
+    fn mouse_tile(&self) -> Option<Tile> {
+        let m = self.mouse_world();
         let t = (m.x.floor() as i32, m.y.floor() as i32);
         self.world.map.in_bounds(t.0, t.1).then_some(t)
     }
 
+    /// The line of the train under the mouse.
+    fn train_at(&self, p: V2) -> Option<usize> {
+        self.world.lines.iter().position(|l| {
+            !l.train.is_wrecked() && l.train.cars().iter().any(|c| c.pos.dist(p) < 0.5)
+        })
+    }
+
     fn click(&mut self, tile: Tile) {
         let station = self.world.station_at(tile);
+        if self.draft.is_none()
+            && let Some(i) = self.train_at(self.mouse_world())
+        {
+            self.selected = Some(i);
+            return;
+        }
         match (&mut self.draft, station) {
             (None, Some(s)) => {
+                self.selected = None;
                 self.draft = Some(Draft {
                     from: s,
                     via: Vec::new(),
@@ -168,6 +210,7 @@ impl Game {
                 });
             }
             (None, None) => {
+                self.selected = None;
                 if self.world.map.is_broken(tile)
                     && let Err(e) = self.world.apply(&Command::Repair(tile))
                 {
@@ -215,21 +258,34 @@ impl Game {
 
     fn update(&mut self) {
         let dt = get_frame_time();
-        self.view.update(dt);
-        if is_key_pressed(KeyCode::Space) || is_key_pressed(KeyCode::P) {
-            self.paused = !self.paused;
-        }
-        if matches!(self.world.state, State::Lost | State::Won) && is_key_pressed(KeyCode::Enter) {
-            *self = Game::new();
+        if self.screen == Screen::Title {
+            if is_key_pressed(KeyCode::Enter) || is_mouse_button_pressed(MouseButton::Left) {
+                self.screen = Screen::Run;
+            }
             return;
+        }
+        let over = matches!(self.world.state, State::Lost | State::Won);
+        if over && is_key_pressed(KeyCode::Enter) || self.paused && is_key_pressed(KeyCode::R) {
+            *self = Game::new(Screen::Run);
+            return;
+        }
+        self.view.update(dt);
+        if !over && (is_key_pressed(KeyCode::Space) || is_key_pressed(KeyCode::P)) {
+            self.paused = !self.paused;
         }
         if is_key_pressed(KeyCode::Escape) || is_mouse_button_pressed(MouseButton::Right) {
             self.draft = None;
+            self.selected = None;
         }
         let hover = self.mouse_tile();
         let cards_open = matches!(self.world.state, State::LevelUp(_));
+        let on_panel = self
+            .panel
+            .is_some_and(|r| r.contains(mouse_position().into()));
         if is_mouse_button_pressed(MouseButton::Left)
             && !cards_open
+            && !over
+            && !on_panel
             && let Some(t) = hover
         {
             self.click(t);
@@ -267,15 +323,24 @@ impl Game {
             from: self.draft.as_ref().map(|d| d.from),
             hover_station: hover.and_then(|t| self.world.station_at(t)),
             hover_tile: hover,
+            selected: self.selected,
         };
         set_camera(&self.view.camera());
         render::draw_world(&self.world, &overlay);
         set_default_camera();
-        let hint = match &self.draft {
-            None => "Click a station to start a line.  WASD: move  Wheel: zoom  Space: pause",
-            Some(_) => {
-                "Click the second station to build.  Click grass: waypoint.  Esc or right click: cancel"
-            }
+        if self.screen == Screen::Title {
+            ui::title();
+            return;
+        }
+        ui::top_bar(&self.world, self.speed_label());
+        let hint = if self.draft.is_some() {
+            "Click the second station to build.  Click grass: waypoint.  Esc or right click: cancel"
+        } else if self.selected.is_some() {
+            "Esc: close the train panel.  Click a station to start a line."
+        } else if hover.is_some_and(|t| self.world.map.is_broken(t)) {
+            "Click to repair the track."
+        } else {
+            "Click a station to start a line.  Click a train: panel.  WASD: move  Wheel: zoom  Space: pause"
         };
         ui::hint(hint);
         if let Some(d) = &self.draft {
@@ -284,33 +349,41 @@ impl Game {
                 None => "No route".to_owned(),
             };
             ui::cursor_label(&text);
+        } else if hover.is_some_and(|t| self.world.map.is_broken(t)) {
+            ui::cursor_label(&format!("Repair ${:.0}", self.world.repair_cost()));
         }
-        if self.paused {
-            ui::banner("PAUSED");
-        } else if self.draft.is_some() {
-            ui::banner("x0.25");
+        self.panel = None;
+        if let Some(i) = self.selected {
+            if i < self.world.lines.len() {
+                let (r, remove) = ui::train_panel(&self.world, i);
+                self.panel = Some(r);
+                if remove && self.world.apply(&Command::Remove(i)).is_ok() {
+                    self.selected = None;
+                }
+            } else {
+                self.selected = None;
+            }
         }
         if let Some((text, _)) = &self.toast {
             ui::toast(text);
         }
-        ui::stats(&self.world);
-        if let State::LevelUp(cards) = self.world.state
-            && let Some(i) = ui::cards(&self.world, &cards)
-        {
-            let _ = self.world.apply(&Command::Pick(i));
-        }
-        if self.world.state == State::Lost {
-            ui::banner("The town fell. Press Enter.");
-        }
-        if self.world.state == State::Won {
-            ui::banner("The Large UFO is down. You win! Press Enter.");
+        match self.world.state {
+            State::LevelUp(cards) => {
+                if let Some(i) = ui::cards(&self.world, &cards) {
+                    let _ = self.world.apply(&Command::Pick(i));
+                }
+            }
+            State::Lost => ui::end_screen(&self.world, false),
+            State::Won => ui::end_screen(&self.world, true),
+            State::Running if self.paused => ui::paused(),
+            State::Running => {}
         }
     }
 }
 
 #[macroquad::main(window_conf)]
 async fn main() {
-    let mut game = Game::new();
+    let mut game = Game::new(Screen::Title);
     loop {
         game.update();
         game.draw();
