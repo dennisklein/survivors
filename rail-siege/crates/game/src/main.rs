@@ -6,7 +6,7 @@ use sim::math::V2;
 use sim::route::Route;
 use sim::station::{MAP_H, MAP_W};
 use sim::track::Tile;
-use sim::world::{Command, DT, World};
+use sim::world::{Command, DT, State, World};
 
 /// At most this many simulation steps per frame, so a slow frame does not freeze the game.
 const MAX_STEPS: u32 = 5;
@@ -217,7 +217,9 @@ impl Game {
             self.draft = None;
         }
         let hover = self.mouse_tile();
+        let cards_open = matches!(self.world.state, State::LevelUp(_));
         if is_mouse_button_pressed(MouseButton::Left)
+            && !cards_open
             && let Some(t) = hover
         {
             self.click(t);
@@ -242,11 +244,15 @@ impl Game {
         self.world.events.clear();
     }
 
-    fn draw(&self) {
+    fn draw(&mut self) {
         let hover = self.mouse_tile();
         let overlay = render::Overlay {
             ghost: self.draft.as_ref().and_then(|d| d.ghost.as_ref()),
-            ghost_ok: true,
+            ghost_ok: self
+                .draft
+                .as_ref()
+                .and_then(|d| d.ghost.as_ref())
+                .is_some_and(|r| self.world.cost(r) <= self.world.money),
             waypoints: self.draft.as_ref().map_or(&[], |d| &d.via),
             from: self.draft.as_ref().map(|d| d.from),
             hover_station: hover.and_then(|t| self.world.station_at(t)),
@@ -264,7 +270,7 @@ impl Game {
         ui::hint(hint);
         if let Some(d) = &self.draft {
             let text = match &d.ghost {
-                Some(r) => format!("{:.0} tiles, {} new", r.len, r.new_tiles),
+                Some(r) => format!("${:.0}  {:.0} tiles", self.world.cost(r), r.len),
                 None => "No route".to_owned(),
             };
             ui::cursor_label(&text);
@@ -276,6 +282,12 @@ impl Game {
         }
         if let Some((text, _)) = &self.toast {
             ui::toast(text);
+        }
+        ui::stats(&self.world);
+        if let State::LevelUp(cards) = self.world.state
+            && let Some(i) = ui::cards(&self.world, &cards)
+        {
+            let _ = self.world.apply(&Command::Pick(i));
         }
     }
 }

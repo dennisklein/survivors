@@ -2,6 +2,7 @@
 //!
 //! This crate has no engine dependency, so `cargo test` runs fast and natively.
 
+pub mod cards;
 pub mod math;
 pub mod rng;
 pub mod route;

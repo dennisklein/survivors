@@ -136,7 +136,7 @@ impl Train {
     }
 
     /// Route distance of the lead car.
-    fn lead_s(&self) -> f32 {
+    pub fn lead_s(&self) -> f32 {
         if self.dir > 0.0 {
             self.s
         } else {
