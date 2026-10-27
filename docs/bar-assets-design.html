@@ -1,0 +1,265 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BAR Assets Design</title>
+<style>
+:root{--bg:#fbfaf7;--fg:#1d1d1b;--mut:#5d5b55;--line:#d9d6cc;--card:#fff;--acc:#2f5d8a;--ok:#2e7d32;--warn:#a86b00;--no:#b3261e;--code:#f1efe8}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#17181a;--fg:#e8e6e1;--mut:#a3a09a;--line:#34363a;--card:#1f2124;--acc:#7fb0e0;--ok:#7cc47f;--warn:#e0b050;--no:#ef7a72;--code:#26282c}}
+:root[data-theme="dark"]{--bg:#17181a;--fg:#e8e6e1;--mut:#a3a09a;--line:#34363a;--card:#1f2124;--acc:#7fb0e0;--ok:#7cc47f;--warn:#e0b050;--no:#ef7a72;--code:#26282c}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.55 system-ui,-apple-system,"Segoe UI",sans-serif}
+main{max-width:920px;margin:0 auto;padding:32px 16px 80px}
+h1{font-size:1.9rem;margin:0 0 4px}h2{margin-top:2.4em;border-bottom:1px solid var(--line);padding-bottom:4px}h3{margin-top:1.6em}
+.sub{color:var(--mut)}
+table{border-collapse:collapse;width:100%;font-size:.92rem;display:block;overflow-x:auto}
+th,td{border:1px solid var(--line);padding:6px 8px;text-align:left;vertical-align:top}
+th{background:var(--code)}
+code{background:var(--code);padding:1px 4px;border-radius:3px;font-size:.9em}
+pre{background:var(--code);padding:12px;border-radius:6px;overflow-x:auto;font-size:.85rem}
+.ok{color:var(--ok);font-weight:600}.no{color:var(--no);font-weight:600}.warn{color:var(--warn);font-weight:600}
+.card{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:12px 16px;margin:16px 0}
+svg{width:100%;height:auto;display:block}
+svg text{fill:var(--fg);font:13px system-ui,sans-serif}
+svg .box{fill:var(--card);stroke:var(--line);stroke-width:1.5}
+svg .hl{stroke:var(--acc)}
+svg .ln{stroke:var(--mut);stroke-width:1.5;fill:none}
+svg .mut{fill:var(--mut);font-size:11px}
+ol li,ul li{margin:4px 0}
+</style>
+</head>
+<body>
+<main>
+<h1>Real BAR assets in the survivors games</h1>
+<p class="sub">Design document, revision 2 (review corrections applied). Status: proposal, not implemented. Date: 2026-10-27. BAR source checked: <code>beyond-all-reason/Beyond-All-Reason</code> at commit <code>dab26c9a95782f1c536c0f984ea931e06c0e3beb</code>.</p>
+
+<div class="card">
+<strong>Summary.</strong> Most BAR art, sound and music is CC BY-NC-ND 4.0 or "all rights reserved". Those files, and anything made from them, must not go in this public repo or on GitHub Pages. The only clean source of real BAR art is the set of models by Cremuss (CC BY-SA 4.0) rendered with <code>Arm_*</code> textures (CC BY-SA 4.0). At the pinned commit, <strong>every sole-Cremuss model is a building; no commander, mobile unit, turret like <code>armllt</code>, or enemy is by Cremuss.</strong> So the public tier is <strong>Armada structures only</strong>. Players, commanders, enemies and turrets stay procedural.
+<ul>
+<li><strong>Public tier</strong> (default, on Pages): top-down sprites of Cremuss Armada structures, with attribution and CC BY-SA notices and an in-game credits screen. Procedural art and sound stay as the fallback.</li>
+<li><strong>Private tier</strong> (cargo feature <code>bar-private</code>, local only): all other BAR assets. Never committed or deployed unless the rights holders give written permission.</li>
+</ul>
+</div>
+
+<h2>1. Licence verdict per asset class</h2>
+<p>Sources: the root files <code>LICENSE.md</code>, <code>license_general.txt</code> and <code>license_*.txt</code>, plus the per-folder <code>license.txt</code> files. Unlisted content is "all rights reserved" (<code>LICENSE.md</code>). <code>LICENSE.md</code> names more authors (FireStorm, Beherith, Mr Bob, KaiserJ, PtaQ, Flaka, Floris) than <code>license_general.txt</code>. Where they differ, <strong><code>LICENSE.md</code> wins</strong>: it is newer and more restrictive.</p>
+<table>
+<tr><th>Asset class</th><th>Licence</th><th>Source file</th><th>Public ship?</th></tr>
+<tr><td>Models whose sole author is Cremuss (<code>model_author</code>/<code>author</code> in <code>units/**/&lt;unit&gt;.lua</code>)</td><td>CC BY-SA 4.0, (c) Cremuss</td><td><code>objects3d/Units/license.txt</code></td><td class="ok">Yes, with attribution + share-alike, only with a clean texture (see next rows)</td></tr>
+<tr><td>Models co-authored "Cremuss, Hornet" / "Cremuss, Tharsis"</td><td>Unresolved: the co-authors have no CC BY-SA grant; <code>LICENSE.md</code> makes other authors CC BY-NC-ND</td><td><code>objects3d/Units/license.txt</code>, <code>LICENSE.md</code></td><td class="no">No, until the co-author confirms in writing</td></tr>
+<tr><td><code>Arm_*</code> unit textures</td><td>CC BY-SA 4.0, (c) Cremuss</td><td><code>unittextures/license.txt</code></td><td class="ok">Yes, same terms</td></tr>
+<tr><td><code>cor_*</code> textures, decal AO planes</td><td>CC BY-NC-ND 4.0, (c) Beherith</td><td><code>unittextures/license.txt</code></td><td class="no">No (also blocks textured renders of Cremuss Cortex models)</td></tr>
+<tr><td>Other models (FireStorm, Beherith, Kaiser, Mr Bob, Flaka, others)</td><td>CC BY-NC-ND 4.0; "no use in any other game"</td><td><code>objects3d/Units/license.txt</code>, <code>LICENSE.md</code></td><td class="no">No</td></tr>
+<tr><td>Unit animations</td><td>CC BY-NC-ND 4.0 (Beherith). Exception: raptor <code>.bos/.cob/.h</code> are GPL v2</td><td><code>LICENSE.md</code>; exception in <code>scripts/Raptors/License.txt</code></td><td class="no">No</td> </tr>
+<tr><td>Raptor scripts (.bos/.cob/.h)</td><td>GPL v2 (overrides <code>LICENSE.md</code> for raptors)</td><td><code>scripts/Raptors/License.txt</code></td><td class="warn">Legal, but not useful (engine scripts)</td></tr>
+<tr><td>Unit pictures <code>unitpics/</code></td><td>CC BY-NC-ND (IceXuick, Floris)</td><td><code>license_unitpics.txt</code></td><td class="no">No</td></tr>
+<tr><td>Icons <code>icons/</code> (all, including icons of Cremuss units such as <code>icons/armmex.png</code>)</td><td>"all rights reserved (CC BY NC ND)"; read as all rights reserved</td><td><code>license_icons.txt</code></td><td class="no">No</td></tr>
+<tr><td>Bitmaps, effects, loading pictures</td><td>All rights reserved (IceXuick, Rubus)</td><td><code>license_bitmaps.txt</code></td><td class="no">No</td></tr>
+<tr><td>UI images <code>luaui/images</code></td><td>Mostly all rights reserved. WTFPL: <code>leaderboard.png</code> (ZephyrSkies), <code>keybinds/{duplicate,edit,export,import}.png</code> (Robert Burnham)</td><td><code>luaui/images/license.txt</code></td><td class="warn">Only those WTFPL files</td></tr>
+<tr><td>Cursors <code>anims/</code></td><td>All rights reserved (IceXuick)</td><td><code>anims/license.txt</code></td><td class="no">No</td></tr>
+<tr><td>Sounds</td><td>All rights reserved (IceXuick) for whole folders (atmos*, bombs, buildings, commands, function, movement*, replies, unit*, voice), and by date cutoff for critters, replies, ui, uw, weapons (after Jan 2019) and raptors (after Jul 2020). Older files in the cutoff folders have no stated licence ("a handful under CC/GPL", none listed), so they fall back to all rights reserved</td><td><code>license_sounds.txt</code>, <code>LICENSE.md</code></td><td class="no">No (old files included)</td></tr>
+<tr><td><code>sounds/voice-soundeffects/AllyRequest.wav</code></td><td>CC0 (Inimitible_Wolf)</td><td><code>license_sounds.txt</code></td><td class="ok">Yes</td></tr>
+<tr><td><code>sounds/modbroadcast/*</code></td><td>Pixabay Content License: modified use inside a work is allowed; no redistribution "on a Standalone basis"</td><td><code>sounds/modbroadcast/license.txt</code></td><td class="warn">Allowed if transformed and embedded; do not commit the raw files</td></tr>
+<tr><td>Music <code>music/original</code></td><td>All rights reserved (CC BY NC ND 4.0)</td><td><code>license_music.txt</code></td><td class="no">No</td></tr>
+<tr><td>Lua game code</td><td>GPL v2</td><td><code>LICENSE.md</code></td><td class="no">Do not copy (MIT Rust project)</td></tr>
+<tr><td>Names and logos (BAR, Armada, Cortex)</td><td>Trademark / branding; logos all rights reserved</td><td><code>LICENSE.md</code></td><td class="warn">Descriptive names only; no logos</td></tr>
+</table>
+
+<h3>Why ND blocks the pipeline</h3>
+<p>Each conversion step (resize, re-encode, render, sprite sheet) makes an adapted work, which CC BY-NC-ND does not allow to be shared. BAR's <code>LICENSE.md</code> also forbids putting the artwork "in any other game", so a verbatim copy is against the stated intent too. There is no "verbatim only" route.</p>
+
+<h3>Cremuss models at the pinned commit</h3>
+<p>Found with <code>git ls-tree -r HEAD units/</code> plus <code>git cat-file</code> on each <code>.lua</code> (49 hits). All are buildings.</p>
+<table>
+<tr><th>Group</th><th>Unit ids</th><th>Public?</th></tr>
+<tr><td>Armada, sole author Cremuss</td><td><code>armmex armmoho armsolar armadvsol armwin armfus armafus armckfus armgeo armageo armgmm armmmkr armestor armmstor armlab armalab armhalab armvp armavp armhavp armap armshltx armshltxuw armfatf armflak armbrtha armanni armsilo armferret armdrag armrad armarad armveil armjamt armtarg armdf armuwadves armuwadvms</code></td><td class="ok">Yes (with <code>Arm_*</code> textures)</td></tr>
+<tr><td>Co-author Hornet</td><td><code>armaap armhaap armhaapuw armuwgeo</code></td><td class="no">No, until Hornet confirms</td></tr>
+<tr><td>Co-author Tharsis</td><td><code>armuwageo coruwageo coruwgeo</code></td><td class="no">No, until Tharsis confirms</td></tr>
+<tr><td>Cortex, sole author Cremuss</td><td><code>corgantuw corgeo corafus corageo</code></td><td class="warn">Geometry only: the <code>.s3o</code> names <code>cor_color.dds</code>/<code>cor_other.dds</code> (ND). Render untextured or with a new texture, or skip</td></tr>
+</table>
+<p>Key units that are <strong>not</strong> Cremuss: <code>armcom</code>, <code>armamd</code> (FireStorm); <code>armpw</code> (Kaiser); <code>armllt</code>, <code>armflash</code>, <code>armnanotc</code> (Beherith); <code>armstump</code>, <code>armatlas</code> (Flaka). These are CC BY-NC-ND and cannot ship.</p>
+
+<h3>Attribution plan</h3>
+<ol>
+<li>One manifest, <code>bar-assets/manifest.toml</code>. Each entry: id, BAR path, BAR commit, author, licence (SPDX), "modified: yes/no", change description.</li>
+<li>Generate <code>bar-assets/generated/ATTRIBUTION.md</code> from it. Each line: title, author, source URL (<code>github.com/beyond-all-reason/Beyond-All-Reason/blob/&lt;sha&gt;/&lt;path&gt;</code>), licence link, change note ("rendered top-down, 64 px, team-colour mask extracted").</li>
+<li>Put <code>bar-assets/generated/LICENSE</code> (CC BY-SA 4.0) next to the sprites. Rendered sprites, and rendered wrecks (<code>*_dead.s3o</code>), are adaptations and are CC BY-SA 4.0. Embedding them with <code>include_bytes!</code> forms a collection, so the Rust code stays MIT.</li>
+<li><strong>Required:</strong> an in-game "Credits" screen in each game that uses a sprite, stating author, source, licence and changes (CC BY-SA §3(a), "reasonable manner based on the medium"). A <code>credits.html</code> linked from the site index is extra, not a replacement.</li>
+<li>Update each game's <code>assets/LICENSES.md</code>: models are only partly ND; music is not free; CC0/WTFPL exceptions exist; the fallback is all rights reserved.</li>
+<li>State: "Not affiliated with or endorsed by Beyond All Reason."</li>
+</ol>
+
+<h2>2. What we can and cannot ship</h2>
+<table>
+<tr><th>Tier</th><th>Contents</th><th>Committed?</th><th>On Pages?</th></tr>
+<tr><td><strong>Public</strong></td><td>Armada structures only: mex/moho, solar, wind, fusion, geo, storage, converters, factories, <code>armflak</code>, <code>armbrtha</code>, <code>armanni</code>, <code>armsilo</code>, <code>armdrag</code>, radar, jammer. CC0 <code>AllyRequest.wav</code>; WTFPL UI icons. Procedural for everything else</td><td>Generated outputs: yes. Raw BAR files: no</td><td class="ok">Yes</td></tr>
+<tr><td><strong>Private</strong></td><td>Commanders, all mobile units, ND turrets, Cortex, raptors, scavs, unitpics, icons, sounds, music</td><td class="no">Never</td><td class="no">Never (until written permission)</td></tr>
+</table>
+
+<h2>3. Pipeline</h2>
+<svg viewBox="0 0 880 300" role="img" aria-label="Asset pipeline diagram">
+<defs><marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0L10,5L0,10z" fill="currentColor" style="color:var(--mut)"/></marker></defs>
+<rect class="box" x="10" y="30" width="170" height="70" rx="6"/><text x="22" y="56">BAR repo @ pinned SHA</text><text class="mut" x="22" y="78">sparse, blobless fetch</text>
+<rect class="box hl" x="230" y="30" width="170" height="70" rx="6"/><text x="242" y="56">mise run bar:fetch</text><text class="mut" x="242" y="78">.cache/bar/ (gitignored)</text>
+<rect class="box hl" x="450" y="30" width="190" height="70" rx="6"/><text x="462" y="56">mise run bar:check</text><text class="mut" x="462" y="78">author + texture + licence</text>
+<rect class="box hl" x="450" y="170" width="190" height="70" rx="6"/><text x="462" y="196">mise run bar:render</text><text class="mut" x="462" y="218">Blender (Cycles CPU)</text>
+<rect class="box" x="690" y="170" width="180" height="70" rx="6"/><text x="702" y="196">bar-assets/generated/</text><text class="mut" x="702" y="218">committed, CC BY-SA</text>
+<rect class="box" x="690" y="30" width="180" height="70" rx="6"/><text x="702" y="56">.cache/bar-private/</text><text class="mut" x="702" y="78">local only, feature flag</text>
+<rect class="box" x="230" y="200" width="170" height="70" rx="6"/><text x="242" y="226">games (wasm)</text><text class="mut" x="242" y="248">include_bytes! / fallback</text>
+<path class="ln" marker-end="url(#a)" d="M180 65H226"/><path class="ln" marker-end="url(#a)" d="M400 65H446"/>
+<path class="ln" marker-end="url(#a)" d="M545 100V166"/><text class="mut" x="552" y="138">public ids only</text>
+<path class="ln" marker-end="url(#a)" d="M640 65H686"/><text class="mut" x="645" y="56">private</text>
+<path class="ln" marker-end="url(#a)" d="M640 205H686"/>
+<path class="ln" marker-end="url(#a)" d="M780 240V285H315V274"/>
+</svg>
+
+<h3>Decision: commit generated public assets, cache the raw sources</h3>
+<p>Recommended: <strong>commit the converted public outputs</strong> (well under 0.5 MB). Never commit raw BAR files.</p>
+<ul>
+<li>Pages CI does not need Blender (about 300 MB). Builds stay fast.</li>
+<li>Reviewers see each sprite in the diff; each file's licence is checked once by a human.</li>
+<li>The CC BY-SA files and notices live in the source repo, as share-alike requires.</li>
+</ul>
+
+<h3>mise tasks</h3>
+<p>All <code>bar:*</code> tasks live in the <strong>root</strong> <code>mise.toml</code>. <code>bar-assets/</code> gets no <code>mise.toml</code>, so the root <code>build-all</code> loop (which builds every directory with both <code>mise.toml</code> and <code>Cargo.toml</code>) does not pick it up.</p>
+<table>
+<tr><th>Task</th><th>Does</th></tr>
+<tr><td><code>bar:fetch</code></td><td><code>git init</code>; <code>git remote add origin …</code>; <code>git sparse-checkout set</code> for the licence files, <code>units/</code>, <code>objects3d/Units/&lt;unit&gt;.s3o</code> (and <code>&lt;unit&gt;_dead.s3o</code>) for each manifest entry, and <code>unittextures/Arm_color.dds</code>, <code>Arm_normal.dds</code>, <code>Arm_other.dds</code>; <code>git fetch --depth 1 --filter=blob:none origin &lt;sha&gt;</code>; <code>git checkout FETCH_HEAD</code>. (<code>git clone --depth 1</code> cannot check out a pinned SHA.) No LFS at the pinned commit; if that changes, add <code>git lfs pull --include=&lt;paths&gt;</code>. Output: <code>.cache/bar/&lt;sha&gt;/</code>.</td></tr>
+<tr><td><code>bar:check</code></td><td>List units with <code>git ls-tree -r HEAD</code> (<code>git ls-files</code> in a sparse clone only shows checked-out paths). For each public entry: resolve the exact nested <code>.lua</code> (e.g. <code>units/CorBuildings/…</code>, <code>units/other/evocom/…</code>) that sets that <code>objectname</code>; read <code>customparams.model_author</code> and <code>author</code> (there is no <code>artist</code> field); <strong>fail</strong> if neither is present, if the author is not exactly <code>Cremuss</code>, or if there is more than one author and the co-author is not in the manifest's written-confirmation list. Parse the <code>.s3o</code> header and <strong>fail</strong> if an embedded texture name is not <code>Arm_*</code> (untextured renders need an explicit manifest flag). Pin and hash all 14 licence files (root and folder, including <code>objects3d/Units/license.txt</code> and <code>unittextures/license.txt</code>); fail on any change. Any id not passing goes to a manual allowlist decision, not into the build.</td></tr>
+<tr><td><code>bar:render</code></td><td>Blender <code>-b -P tools/render_s3o.py</code>. Blender pinned as an official tarball by URL + SHA-256 in <code>tools/fetch-blender.sh</code>; the S3O importer add-on pinned to a commit that supports that Blender version. Cycles on CPU with fixed seed and sample count (EEVEE fails headless). Orthographic top-down, transparent film, <strong>one frame per unit</strong> (rotation happens at draw time with <code>draw_texture_ex</code>), 64 px. The team-colour mask is the alpha channel of <code>tex1</code>; extract it into its own sheet. Then <code>oxipng</code>.</td></tr>
+<tr><td><code>bar:attrib</code></td><td>Write <code>ATTRIBUTION.md</code>, the in-game credits text and <code>credits.html</code> from the manifest.</td></tr>
+<tr><td><code>bar:public</code></td><td>fetch → check → render → attrib.</td></tr>
+<tr><td><code>bar:private</code></td><td>Local only. Unitpics (DDS → PNG), sounds (<code>ffmpeg -ac 1 -ar 22050 -c:a libvorbis -q:a 3</code>), music. Writes <code>.cache/bar-private/</code>. Refuses when <code>CI</code> is set (and see the <code>build.rs</code> guard below).</td></tr>
+<tr><td><code>bar:ci</code></td><td><code>cargo clippy</code> and <code>cargo test</code> for <code>bar-assets</code>; called from the root <code>ci</code> task, because each game's <code>--workspace</code> lint does not cover path dependencies.</td></tr>
+</table>
+
+<h2>4. Shared asset crate</h2>
+<svg viewBox="0 0 880 250" role="img" aria-label="Repository layout diagram">
+<rect class="box hl" x="10" y="20" width="300" height="210" rx="6"/>
+<text x="24" y="44" font-weight="600">bar-assets/ (new, no mise.toml)</text>
+<text x="34" y="70">Cargo.toml  (features: bar-private)</text>
+<text x="34" y="92">build.rs  (CI guard, private includes)</text>
+<text x="34" y="114">manifest.toml</text>
+<text x="34" y="136">src/lib.rs   BarUnit, Atlas, synth core</text>
+<text x="34" y="158">generated/*.png, LICENSE, ATTRIBUTION.md</text>
+<text x="34" y="180">tools/render_s3o.py, fetch-blender.sh</text>
+<text x="34" y="202">tools/check.rs</text>
+<rect class="box" x="400" y="20" width="220" height="90" rx="6"/>
+<text x="414" y="44" font-weight="600">&lt;game&gt;/crates/game</text>
+<text x="414" y="68">path dep ../../../bar-assets</text>
+<text x="414" y="90">draw.rs → atlas.draw(..)</text>
+<rect class="box" x="400" y="140" width="220" height="90" rx="6"/>
+<text x="414" y="164" font-weight="600">&lt;game&gt;/crates/sim</text>
+<text x="414" y="188">no logic change</text>
+<text x="414" y="210">synth.rs keeps game sounds</text>
+<rect class="box" x="670" y="20" width="200" height="210" rx="6"/>
+<text x="684" y="44" font-weight="600">root</text>
+<text x="684" y="70">mise.toml  bar:* tasks</text>
+<text x="684" y="92">scripts/build-site.sh</text>
+<text x="684" y="114">  + credits.html</text>
+<text x="684" y="136">.gitignore  .cache/</text>
+<text x="684" y="158">docs/bar-assets-design.html</text>
+<path class="ln" d="M396 65H310"/><path class="ln" d="M396 185H310"/><text class="mut" x="318" y="58">path dep</text>
+</svg>
+<p>API (sketch):</p>
+<pre>pub enum BarUnit { Armmex, Armsolar, Armwin, Armfus, Armlab, Armflak, Armdrag, Armanni, Armsilo, Armrad, /* … structures only */ }
+pub enum Source { Public, Private, Procedural }
+
+pub struct Atlas { /* Texture2D base + team mask per unit */ }
+impl Atlas {
+    pub fn load(units: &amp;[BarUnit]) -&gt; Atlas;   // call inside main, after the macroquad context exists
+    pub fn draw(&amp;self, u: BarUnit, pos: Vec2, size: f32, rot: f32, team: Color,
+                fallback: impl FnOnce()) -&gt; Source; // fallback = old draw_* fn
+}</pre>
+<ul>
+<li>Wiring: each game is its own Cargo workspace, so <code>bar-assets</code> is a path dependency (<code>../../../bar-assets</code>) in each <code>crates/game/Cargo.toml</code>. That changes 15 lockfiles. Add <code>../bar-assets/**</code> to <code>sources</code> in each game's <code>[tasks.build]</code>, or mise skips rebuilds when sprites or the crate change.</li>
+<li>Loading: <code>Atlas::load</code> uses synchronous <code>Texture2D::from_file_with_format(include_bytes!(…), Some(ImageFormat::Png))</code> and sets <code>FilterMode</code> explicitly. It cannot be a <code>static</code>/<code>const</code>. No loading screen is needed on this path (async <code>load_texture</code> would need one).</li>
+<li>Team colour: two draws per unit, base then mask tinted with the team colour (a change; note it in attribution).</li>
+<li><code>bar-private</code> guard in <code>bar-assets/build.rs</code>: if <code>CARGO_FEATURE_BAR_PRIVATE</code> and <code>CI</code> are both set, panic; emit <code>cargo:rerun-if-env-changed=CI</code>. <code>build.rs</code> also generates the private <code>include_bytes!</code> list from files that exist in <code>.cache/bar-private/</code>, so a missing cache does not break compilation.</li>
+<li>Synth: there are 19 <code>synth.rs</code> files and all differ (19 distinct hashes). Share only a small core (<code>wav_bytes</code>, oscillators, envelopes); each game keeps its own sound recipes. This is a real refactor with a per-game listening check.</li>
+<li>Each game keeps its <code>draw_*</code> functions as the fallback, so units with no clean asset need no code branch.</li>
+</ul>
+
+<h2>5. Per-game asset mapping</h2>
+<p>Ids verified against <code>units/</code> at the pinned SHA for the Cremuss list; others are standard BAR names. Legend: <span class="ok">S</span> = public Cremuss sprite, <span class="no">P</span> = procedural in the public build. <strong>All players, commanders, enemies and turrets are P.</strong></p>
+<table>
+<tr><th>Game</th><th>Public sprites (S)</th><th>Procedural (P)</th></tr>
+<tr><td>commander-holdout</td><td>Flak → armflak; Solar → armsolar; Converter → armmmkr (closest Cremuss converter; <code>armmakr</code> is not Cremuss)</td><td>Commander (armcom), LaserTower (armllt), HeavyLaser (armhlt), Nano (armnanotc), all enemies</td></tr>
+<tr><td>nano-fortress</td><td>Wall → armdrag; Mex → armmex</td><td>Commander, Laser, Nano, Heavy, enemies</td></tr>
+<tr><td>mex-rush</td><td>Mex → armmex</td><td>Tower (armllt), enemies</td></tr>
+<tr><td>factory-escort</td><td>Lab → armlab; Mex → armmex; Solar → armsolar</td><td>Own units, enemies, shots</td></tr>
+<tr><td>wind-and-wreck</td><td>Wind → armwin; Solar → armsolar; Storage → armestor</td><td>Turret, Shield (armgate), scav enemies</td></tr>
+<tr><td>dgun-dash</td><td>none</td><td>Everything (commander, mines, turret, enemies)</td></tr>
+<tr><td>raptor-nest</td><td>Wall → armdrag</td><td>Towers (armllt, armhlt, armrl), Nano, raptors, nest</td></tr>
+<tr><td>shield-bubble</td><td>none (armgate is not Cremuss)</td><td>Shield, Hq, enemies</td></tr>
+<tr><td>tech-tree-tower</td><td>Mex, Solar, Wind, Fusion, Storage, Radar → armmex, armsolar, armwin, armfus, armmstor, armrad</td><td>Core, Llt, Hlt, Nano, enemies</td></tr>
+<tr><td>nuke-countdown</td><td>Nuke silo → armsilo; Solar → armsolar</td><td>AntiNuke (armamd), enemies</td></tr>
+<tr><td>corridor-commander</td><td>none</td><td>Player, Tower, enemies</td></tr>
+<tr><td>transport-drop</td><td>Wall → armdrag; Mex → armmex</td><td>Transport (armatlas), Commander, Turret, Repair pad, Beacon, enemies</td></tr>
+<tr><td>wall-weaver</td><td>Wall → armdrag</td><td>Turret, Core, enemies</td></tr>
+<tr><td>arm-vs-cortex</td><td>Arm Factory → armlab</td><td>Commanders, all units, turrets, Cortex factory (corlab not Cremuss), scavs</td></tr>
+<tr><td>scavenger-salvage</td><td>Flak → armflak; Annihilator → armanni; Radar → armrad</td><td>Llt, Hlt, Recycler, RepairPad, NanoTower, EvacGate, scavs, wrecks of non-Cremuss units</td></tr>
+</table>
+<p>Pilot: <strong>tech-tree-tower</strong> (6 sprites, the most coverage). <code>commander-holdout</code> is a weak pilot because its hero and most buildings stay procedural. Three games (dgun-dash, shield-bubble, corridor-commander) get nothing. If Dennis judges "Armada structures only" too thin, this is a <strong>no-go</strong> for the public tier and the effort shifts to asking for permission.</p>
+<p>Sounds: all games keep the synth in the public build. The private tier maps each <code>Sfx</code> to a BAR sound. CC0 <code>AllyRequest.wav</code> can be a public alert sound.</p>
+<p>The 7 non-BAR games do not change.</p>
+
+<h2>6. CI changes for Pages</h2>
+<ul>
+<li><code>pages.yml</code>: no Blender, no BAR fetch; builds from committed <code>bar-assets/generated/</code>. No cache-key change (the cache only holds <code>*/target</code>; the mise <code>sources</code> fix is what matters).</li>
+<li>Guard step <code>scripts/check-no-private.sh</code>: fails if the site contains files not listed as public in the manifest. The <code>build.rs</code> guard blocks <code>bar-private</code> builds in CI.</li>
+<li><code>build-site.sh</code>: copy attribution as <code>credits.html</code>, link it from the index (in addition to the in-game credits).</li>
+<li><code>bar-assets-verify.yml</code> (manual dispatch): fetch pinned Blender, cache <code>.cache/bar</code> keyed on the BAR SHA, run <code>mise run bar:public</code>, then compare against committed PNGs with a <strong>per-pixel tolerance</strong> (PNG bytes are not stable across machines), not <code>git diff --exit-code</code>.</li>
+<li>Root <code>ci</code> calls <code>bar:ci</code>.</li>
+</ul>
+
+<h2>7. Risks</h2>
+<table>
+<tr><th>Risk</th><th>Effect</th><th>Mitigation</th></tr>
+<tr><td>Public tier is structures only (confirmed)</td><td>Heroes and enemies stay procedural; 3 games get no sprites</td><td>Accept as a partial upgrade, or call no-go and pursue permission</td></tr>
+<tr><td>Co-author / texture traps</td><td>A model ships with ND content</td><td><code>bar:check</code> fails on multi-author tags and non-<code>Arm_*</code> embedded textures</td></tr>
+<tr><td>Licence changes upstream</td><td>Committed assets lose their basis</td><td>Pin SHA; hash all 14 licence files; keep their text in the repo</td></tr>
+<tr><td>Private assets leak to Pages</td><td>Copyright violation</td><td><code>build.rs</code> CI panic; site guard; <code>.cache/</code> gitignored</td></tr>
+<tr><td>Mixed art style</td><td>Real Arm buildings next to procedural units</td><td>Common outline and team ring; accept for now</td></tr>
+<tr><td>Importer / Blender breaks</td><td>Render fails</td><td>Pin Blender tarball + add-on commit; only the verify job is affected</td></tr>
+<tr><td>Wasm size</td><td>Slower load</td><td>One 64 px frame + mask per unit, oxipng; budget 100 KB per game</td></tr>
+<tr><td>Trademark use</td><td>Complaint</td><td>No logos; descriptive names; disclaimer</td></tr>
+<tr><td>Share-alike read as covering Rust code</td><td>Licence confusion</td><td>Separate <code>LICENSE</code> in <code>generated/</code>; README text</td></tr>
+</table>
+
+<h2>8. Commit plan</h2>
+<ol>
+<li><strong>docs:</strong> this design document.</li>
+<li><strong>bar-assets: manifest, fetch and check.</strong> Root <code>bar:fetch</code>, <code>bar:check</code>; output the passing list. <strong>Decision point:</strong> expected result is the ~38 Armada structure ids above. Continue only if Dennis accepts "Armada structures only"; otherwise stop here (no-go) and rely on permission requests.</li>
+<li><strong>bar-assets: crate skeleton.</strong> <code>BarUnit</code>, <code>Atlas</code> with procedural fallback only, <code>build.rs</code> guard, <code>bar:ci</code>.</li>
+<li><strong>games: shared synth core.</strong> Move <code>wav_bytes</code> and oscillators only; per-game recipes stay. Listen-check each game.</li>
+<li><strong>bar-assets: render pipeline.</strong> <code>render_s3o.py</code>, pinned Blender and add-on, <code>bar:render</code>.</li>
+<li><strong>bar-assets: first sprites + attribution.</strong> armmex, armsolar, armwin, armfus, armmstor, armrad (and other passing structures); <code>LICENSE</code>, <code>ATTRIBUTION.md</code>.</li>
+<li><strong>tech-tree-tower: use Atlas</strong> as the pilot, with in-game credits; check size and look.</li>
+<li><strong>games: use Atlas</strong> in the other games that have S entries (11), add <code>../bar-assets/**</code> to <code>sources</code> in all 15.</li>
+<li><strong>licences: update the 15 <code>assets/LICENSES.md</code></strong>; in-game credits screens.</li>
+<li><strong>ci:</strong> site guard, credits page, verify workflow with tolerance compare.</li>
+<li><strong>bar-assets: private tier</strong> (<code>bar-private</code>, <code>bar:private</code>).</li>
+</ol>
+
+<h2>9. Open decisions</h2>
+<table>
+<tr><th>Decision</th><th>Options</th><th>Recommended default</th></tr>
+<tr><td>Go ahead with "Armada structures only"?</td><td>Go / no-go</td><td><strong>Go</strong>, as a partial upgrade; reassess after the pilot</td></tr>
+<tr><td>Commit generated public assets?</td><td>Commit / generate in CI</td><td><strong>Commit</strong></td></tr>
+<tr><td>Ask rights holders for permission?</td><td>Ask now / never</td><td><strong>Ask now</strong>: Beherith (models, textures, animations), IceXuick (sounds, icons, bitmaps), Floris (unitpics), Hornet and Tharsis (co-authored models). Do not block on answers</td></tr>
+<tr><td>Cremuss Cortex models (ND textures)</td><td>Untextured / new texture / skip</td><td><strong>Skip</strong> for now</td></tr>
+<tr><td>Renderer</td><td>Blender / pure-Rust S3O renderer</td><td><strong>Blender</strong> (Cycles CPU, pinned)</td></tr>
+<tr><td>Sprite size and frames</td><td>64/128 px; 1/8 frames</td><td><strong>64 px, 1 frame + mask</strong>, rotate at draw time</td></tr>
+<tr><td>Pilot game</td><td>tech-tree-tower / commander-holdout</td><td><strong>tech-tree-tower</strong></td></tr>
+<tr><td>Synth sharing</td><td>Small core / full merge</td><td><strong>Small core</strong></td></tr>
+<tr><td>Private tier</td><td>Build / skip</td><td><strong>Build last</strong>, local play only</td></tr>
+<tr><td>Music</td><td>None / CC music elsewhere</td><td><strong>None</strong> for now</td></tr>
+</table>
+
+<p class="sub">Sources: BAR licence files and <code>units/**/*.lua</code> at the pinned SHA; survivors repo (<code>*/crates/game/src/{draw,audio,main}.rs</code>, <code>*/assets/LICENSES.md</code>, <code>mise.toml</code>, <code>scripts/build-site.sh</code>, <code>.github/workflows/pages.yml</code>). Not legal advice.</p>
+</main>
+</body>
+</html>
