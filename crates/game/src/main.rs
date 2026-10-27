@@ -18,6 +18,13 @@ fn window_conf() -> Conf {
     }
 }
 
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum Screen {
+    Title,
+    Run,
+    Paused,
+}
+
 fn read_input() -> Input {
     let left = is_key_down(KeyCode::A) || is_key_down(KeyCode::Left);
     let right = is_key_down(KeyCode::D) || is_key_down(KeyCode::Right);
@@ -31,46 +38,101 @@ fn read_input() -> Input {
     }
 }
 
+fn confirm_pressed() -> bool {
+    is_key_pressed(KeyCode::Enter)
+        || is_key_pressed(KeyCode::Space)
+        || is_mouse_button_pressed(MouseButton::Left)
+}
+
+fn new_world() -> World {
+    World::new((macroquad::miniquad::date::now() * 1000.0) as u64)
+}
+
 #[macroquad::main(window_conf)]
 async fn main() {
-    let mut world = World::new((macroquad::miniquad::date::now() * 1000.0) as u64);
+    let mut world = new_world();
+    let mut screen = Screen::Title;
     let mut acc = 0.0;
+    let mut last_hp = world.hp;
+    let mut hurt_flash = 0.0f32;
     loop {
-        let mut input = read_input();
-        acc += get_frame_time();
-        let mut steps = 0;
-        while acc >= DT && steps < MAX_STEPS {
-            world.step(&input);
-            input.reverse = false;
-            acc -= DT;
-            steps += 1;
+        let pause_key = is_key_pressed(KeyCode::Escape) || is_key_pressed(KeyCode::P);
+        match screen {
+            Screen::Title => {
+                if confirm_pressed() {
+                    screen = Screen::Run;
+                }
+            }
+            Screen::Run => {
+                if pause_key && world.state == State::Running {
+                    screen = Screen::Paused;
+                }
+            }
+            Screen::Paused => {
+                if pause_key {
+                    screen = Screen::Run;
+                } else if is_key_pressed(KeyCode::R) {
+                    world = new_world();
+                    screen = Screen::Run;
+                }
+            }
         }
-        if steps == MAX_STEPS {
+        if matches!(world.state, State::Lost | State::Won) && is_key_pressed(KeyCode::Enter) {
+            world = new_world();
+            last_hp = world.hp;
+        }
+
+        if screen == Screen::Run {
+            let mut input = read_input();
+            acc += get_frame_time();
+            let mut steps = 0;
+            while acc >= DT && steps < MAX_STEPS {
+                world.step(&input);
+                input.reverse = false;
+                acc -= DT;
+                steps += 1;
+            }
+            if steps == MAX_STEPS {
+                acc = 0.0;
+            }
+        } else {
             acc = 0.0;
         }
+        if world.hp < last_hp {
+            hurt_flash = 0.3;
+        }
+        last_hp = world.hp;
+        hurt_flash -= get_frame_time();
 
         let cam = render::camera(world.head_pos());
         set_camera(&cam);
         render::draw_world(&world, &cam);
         set_default_camera();
-        if let State::LevelUp(cards) = world.state
-            && let Some(i) = ui::level_up(&world, &cards)
-        {
-            world.pick_card(i);
-            acc = 0.0;
+        if hurt_flash > 0.0 {
+            ui::hurt(hurt_flash / 0.3);
         }
-        draw_text(
-            format!(
-                "HP {:.0}   level {}   speed {:.1}   A/D turn   S reverse",
-                world.hp,
-                world.level,
-                world.train.speed()
-            ),
-            16.0,
-            28.0,
-            24.0,
-            WHITE,
-        );
+
+        match screen {
+            Screen::Title => ui::title(),
+            Screen::Paused => {
+                ui::hud(&world);
+                ui::paused();
+            }
+            Screen::Run => {
+                ui::hud(&world);
+                match world.state {
+                    State::Running => {}
+                    State::LevelUp(cards) => {
+                        if let Some(i) = ui::level_up(&world, &cards) {
+                            world.pick_card(i);
+                            acc = 0.0;
+                        }
+                    }
+                    State::Lost => ui::game_over(&world, false),
+                    State::Won => ui::game_over(&world, true),
+                }
+            }
+        }
         next_frame().await;
     }
 }
