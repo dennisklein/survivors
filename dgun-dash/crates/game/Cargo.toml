@@ -1,0 +1,11 @@
+[package]
+name = "dgun-dash"
+version = "0.1.0"
+description = "D-Gun Dash: macroquad front end"
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+macroquad = { version = "=0.4.16", features = ["audio"] }
+sim = { path = "../sim" }
