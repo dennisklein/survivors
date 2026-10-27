@@ -1,0 +1,5 @@
+# quad-snd declares its web audio imports as plain `extern "C"` without a
+# wasm import module; newer rustc no longer passes --allow-undefined to the
+# wasm linker, so allow them explicitly (they resolve to the JS loader's env).
+[target.wasm32-unknown-unknown]
+rustflags = ["-C", "link-arg=--allow-undefined"]
