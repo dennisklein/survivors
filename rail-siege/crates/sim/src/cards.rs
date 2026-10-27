@@ -17,26 +17,42 @@ pub enum Item {
     HeavyRails,
     BiggerWagons,
     TrackGang,
+    RepairCrew,
+    TownWalls,
 }
 
 impl Item {
-    pub const ALL: [Item; 3] = [Item::HeavyRails, Item::BiggerWagons, Item::TrackGang];
+    pub const ALL: [Item; 5] = [
+        Item::HeavyRails,
+        Item::BiggerWagons,
+        Item::TrackGang,
+        Item::RepairCrew,
+        Item::TownWalls,
+    ];
 
     pub fn name(self) -> &'static str {
         match self {
             Item::HeavyRails => "Heavy rails",
             Item::BiggerWagons => "Bigger wagons",
             Item::TrackGang => "Track gang",
+            Item::RepairCrew => "Repair crew",
+            Item::TownWalls => "Town walls",
         }
     }
 
     pub fn kind(self) -> Kind {
-        Kind::Company
+        match self {
+            Item::TownWalls => Kind::Town,
+            _ => Kind::Company,
+        }
     }
 
     /// What the item does at `level`, or what the level adds.
-    pub fn describe(self, _level: u8) -> &'static str {
+    pub fn describe(self, level: u8) -> &'static str {
         match self {
+            Item::RepairCrew if level <= 1 => "Broken track repairs itself after 8 s.",
+            Item::RepairCrew => "Repairs 1.5 s faster.",
+            Item::TownWalls => "+25 max town HP. Heals 25.",
             Item::HeavyRails => "+10 % train speed.",
             Item::BiggerWagons => "+20 % wagon capacity.",
             Item::TrackGang => "-15 % track and repair cost.",
@@ -73,6 +89,14 @@ impl Levels {
     /// Factor for the cost of track and repairs.
     pub fn build_factor(&self) -> f32 {
         self.factor(Item::TrackGang, -0.15)
+    }
+
+    /// Seconds until broken track repairs itself, if the repair crew works.
+    pub fn repair_time(&self) -> Option<f32> {
+        match self.level(Item::RepairCrew) {
+            0 => None,
+            l => Some(8.0 - 1.5 * (l - 1) as f32),
+        }
     }
 }
 
@@ -171,5 +195,12 @@ mod tests {
         assert!((l.speed_bonus() - 1.1).abs() < 1e-6);
         assert!((l.build_factor() - 0.7).abs() < 1e-6);
         assert_eq!(l.capacity_bonus(), 1.0);
+        assert_eq!(l.repair_time(), None);
+        l.raise(Item::RepairCrew);
+        assert_eq!(l.repair_time(), Some(8.0));
+        for _ in 0..4 {
+            l.raise(Item::RepairCrew);
+        }
+        assert_eq!(l.repair_time(), Some(2.0));
     }
 }

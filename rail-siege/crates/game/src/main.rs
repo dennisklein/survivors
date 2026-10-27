@@ -167,7 +167,13 @@ impl Game {
                     ghost_end: None,
                 });
             }
-            (None, None) => {}
+            (None, None) => {
+                if self.world.map.is_broken(tile)
+                    && let Err(e) = self.world.apply(&Command::Repair(tile))
+                {
+                    self.say(e.text());
+                }
+            }
             (Some(d), Some(s)) if s == d.from => self.draft = None,
             (Some(d), Some(s)) => {
                 let cmd = Command::Build {
@@ -212,6 +218,10 @@ impl Game {
         self.view.update(dt);
         if is_key_pressed(KeyCode::Space) || is_key_pressed(KeyCode::P) {
             self.paused = !self.paused;
+        }
+        if self.world.state == State::Lost && is_key_pressed(KeyCode::Enter) {
+            *self = Game::new();
+            return;
         }
         if is_key_pressed(KeyCode::Escape) || is_mouse_button_pressed(MouseButton::Right) {
             self.draft = None;
@@ -288,6 +298,9 @@ impl Game {
             && let Some(i) = ui::cards(&self.world, &cards)
         {
             let _ = self.world.apply(&Command::Pick(i));
+        }
+        if self.world.state == State::Lost {
+            ui::banner("The town fell. Press Enter.");
         }
     }
 }

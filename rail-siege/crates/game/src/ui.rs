@@ -103,8 +103,10 @@ pub fn text_wrapped(text: &str, x: f32, mut y: f32, width: f32, size: f32, color
 pub fn stats(world: &World) {
     let k = scale();
     let text = format!(
-        "${:.0}   Lv {}   XP {}/{}",
+        "${:.0}   Town {:.0}/{:.0}   Lv {}   XP {}/{}",
         world.money.floor(),
+        world.town_hp,
+        world.town_max,
         world.level,
         world.xp,
         world.xp_needed()

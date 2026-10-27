@@ -1,6 +1,7 @@
 //! Draws the world with original programmer art. One world unit is one tile.
 
 use macroquad::prelude::*;
+use sim::enemy::{BUS_CHARGE_SPEED, BUS_CHARGE_TIME, Enemy, EnemyKind, Phase};
 use sim::math::V2;
 use sim::route::Route;
 use sim::station::{Industry, STOCK_MAX, Station, StationKind};
@@ -31,6 +32,14 @@ const WAGON: Color = Color::new(0.45, 0.36, 0.28, 1.0);
 const HIGHLIGHT: Color = Color::new(1.0, 1.0, 1.0, 0.85);
 const STOCK_BACK: Color = Color::new(0.0, 0.0, 0.0, 0.55);
 const STOCK: Color = Color::new(0.95, 0.75, 0.20, 1.0);
+const RESIDENT: Color = Color::new(0.85, 0.62, 0.45, 1.0);
+const RESIDENT_HAIR: Color = Color::new(0.30, 0.20, 0.14, 1.0);
+const SABOTEUR: Color = Color::new(0.22, 0.22, 0.26, 1.0);
+const SABOTEUR_HAT: Color = Color::new(0.85, 0.30, 0.15, 1.0);
+const BUS: Color = Color::new(0.95, 0.74, 0.16, 1.0);
+const BUS_WINDOW: Color = Color::new(0.20, 0.28, 0.34, 1.0);
+const AIM: Color = Color::new(1.0, 0.25, 0.2, 0.45);
+const FLASH: Color = Color::new(1.0, 1.0, 1.0, 1.0);
 
 /// Cheap stable hash of a tile, for texture variation.
 fn hash(x: i32, y: i32) -> u32 {
@@ -96,6 +105,7 @@ pub fn draw_world(world: &World, o: &Overlay) {
     for l in &world.lines {
         draw_train(&l.train);
     }
+    draw_enemies(world);
     if let Some((x, y)) = o.hover_tile
         && o.hover_station.is_none()
     {
@@ -384,4 +394,50 @@ fn draw_train(train: &Train) {
     );
     let lamp = v(loco.pos + loco.heading * 0.36);
     draw_circle(lamp.x, lamp.y, 0.08, Color::new(1.0, 0.95, 0.6, 1.0));
+}
+
+fn tint(e: &Enemy, c: Color) -> Color {
+    if e.flash > 0.0 { FLASH } else { c }
+}
+
+fn draw_enemies(world: &World) {
+    for e in &world.enemies {
+        if e.kind == EnemyKind::Bus && e.phase == Phase::Aim {
+            let end = v(e.pos + e.dir * (BUS_CHARGE_SPEED * BUS_CHARGE_TIME));
+            draw_line(e.pos.x, e.pos.y, end.x, end.y, 0.12, AIM);
+        }
+    }
+    for e in &world.enemies {
+        let p = e.pos;
+        match e.kind {
+            EnemyKind::Resident => {
+                draw_circle(p.x, p.y, e.radius(), tint(e, RESIDENT));
+                let hair = v(p - e.dir * 0.08);
+                draw_circle(hair.x, hair.y, e.radius() * 0.6, tint(e, RESIDENT_HAIR));
+            }
+            EnemyKind::Saboteur => {
+                draw_circle(p.x, p.y, e.radius(), tint(e, SABOTEUR));
+                let hat = v(p - e.dir * 0.06);
+                draw_circle(hat.x, hat.y, e.radius() * 0.55, tint(e, SABOTEUR_HAT));
+                if e.work > 0.0 {
+                    // A spanner that swings while the saboteur works.
+                    let a = (get_time() as f32 * 12.0).sin() * 0.6;
+                    let tip = v(p + V2::from_angle(a - 0.8) * 0.45);
+                    draw_line(
+                        p.x,
+                        p.y,
+                        tip.x,
+                        tip.y,
+                        0.08,
+                        Color::new(0.8, 0.8, 0.85, 1.0),
+                    );
+                }
+            }
+            EnemyKind::Bus => {
+                draw_box(p, e.dir, 0.95, 0.48, tint(e, BUS));
+                draw_box(p + e.dir * 0.05, e.dir, 0.7, 0.3, tint(e, BUS_WINDOW));
+                draw_box(p + e.dir * 0.4, e.dir, 0.1, 0.44, tint(e, BUS));
+            }
+        }
+    }
 }

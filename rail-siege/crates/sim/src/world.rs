@@ -1,11 +1,15 @@
 //! The world: map, stations, lines with their trains, and the fixed-step
 //! simulation.
 
-use crate::cards::{self, Card, Levels};
+use crate::cards::{self, Card, Item, Levels};
+use crate::director::{self, Director};
+use crate::enemy::{self, Enemy, EnemyKind};
+use crate::grid::Grid;
+use crate::math::V2;
 use crate::rng::Pcg32;
 use crate::route::{self, Route};
-use crate::station::{self, Station};
-use crate::track::{Tile, TileMap};
+use crate::station::{self, MAP_H, MAP_W, Station};
+use crate::track::{Tile, TileMap, tile_centre};
 use crate::train::{self, Phase, Stop, Train};
 
 /// One simulation step: 60 steps per second.
@@ -17,6 +21,22 @@ pub const TILE_COST: f32 = 5.0;
 pub const TRAIN_COST: f32 = 40.0;
 /// Part of the build cost that removing a line pays back.
 pub const REFUND: f32 = 0.5;
+pub const REPAIR_COST: f32 = 10.0;
+pub const TOWN_HP: f32 = 100.0;
+pub const WALLS_HP: f32 = 25.0;
+/// Ground enemies this close to the town centre hit the town.
+pub const TOWN_RADIUS: f32 = 1.9;
+/// A saboteur breaks its track tile after this long on it.
+pub const SABOTAGE_TIME: f32 = 2.0;
+/// Residents go for a train car this close.
+pub const RESIDENT_AGGRO: f32 = 2.0;
+/// This many enemies near a station stop the industry.
+pub const OVERRUN_COUNT: usize = 6;
+pub const OVERRUN_RADIUS: f32 = 2.0;
+pub const CAR_RADIUS: f32 = 0.4;
+/// Ram damage is this factor times the train speed.
+pub const RAM_FACTOR: f32 = 10.0;
+pub const RAM_COOLDOWN: f32 = 0.5;
 
 /// A player command. The game sends commands, the world applies them.
 #[derive(Clone, Debug, PartialEq)]
@@ -27,6 +47,8 @@ pub enum Command {
     Remove(usize),
     /// Pick card `i` of the level-up choice.
     Pick(usize),
+    /// Repair broken track on a tile.
+    Repair(Tile),
 }
 
 /// Why a command did nothing.
@@ -40,6 +62,7 @@ pub enum Refusal {
     NoSuchLine,
     NoMoney,
     NoCard,
+    NotBroken,
 }
 
 impl Refusal {
@@ -52,6 +75,7 @@ impl Refusal {
             Refusal::NoSuchLine => "No such line",
             Refusal::NoMoney => "Not enough money",
             Refusal::NoCard => "No card to pick",
+            Refusal::NotBroken => "Nothing to repair",
         }
     }
 }
@@ -68,6 +92,13 @@ pub enum Event {
     },
     LevelUp,
     Picked,
+    Killed {
+        at: V2,
+    },
+    TownHit,
+    TrackBroken(Tile),
+    Repaired,
+    Lost,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -75,6 +106,8 @@ pub enum State {
     Running,
     /// Paused: the player picks one of three cards.
     LevelUp([Card; 3]),
+    /// The town has no HP left.
+    Lost,
 }
 
 /// A line from an industry to the town with its train.
@@ -112,6 +145,15 @@ pub struct World {
     pub levels: Levels,
     /// Level-ups that still wait for a card.
     pending: u32,
+    pub enemies: Vec<Enemy>,
+    pub town_hp: f32,
+    pub town_max: f32,
+    pub kills: u32,
+    /// Broken track tiles and how long they are broken.
+    pub breaks: Vec<(Tile, f32)>,
+    director: Director,
+    grid: Grid,
+    next_id: u32,
 }
 
 impl World {
@@ -131,6 +173,14 @@ impl World {
             level: 1,
             levels: Levels::default(),
             pending: 0,
+            enemies: Vec::new(),
+            town_hp: TOWN_HP,
+            town_max: TOWN_HP,
+            kills: 0,
+            breaks: Vec::new(),
+            director: Director::default(),
+            grid: Grid::new(MAP_W, MAP_H),
+            next_id: 0,
         };
         // The free start line: town to the nearest coal mine.
         let coal = w.nearest_coal();
@@ -244,6 +294,35 @@ impl World {
                 Ok(())
             }
             Command::Pick(i) => self.pick_card(*i),
+            Command::Repair(t) => {
+                if !self.map.is_broken(*t) {
+                    return Err(Refusal::NotBroken);
+                }
+                let cost = self.repair_cost();
+                if cost > self.money {
+                    return Err(Refusal::NoMoney);
+                }
+                self.money -= cost;
+                self.repair(*t);
+                Ok(())
+            }
+        }
+    }
+
+    pub fn repair_cost(&self) -> f32 {
+        (REPAIR_COST * self.levels.build_factor()).ceil()
+    }
+
+    fn repair(&mut self, t: Tile) {
+        self.map.set_broken(t, false);
+        self.breaks.retain(|b| b.0 != t);
+        self.events.push(Event::Repaired);
+    }
+
+    fn break_track(&mut self, t: Tile) {
+        if self.map.set_broken(t, true) {
+            self.breaks.push((t, 0.0));
+            self.events.push(Event::TrackBroken(t));
         }
     }
 
@@ -253,7 +332,13 @@ impl World {
         };
         let card = *cards.get(i).ok_or(Refusal::NoCard)?;
         match card {
-            Card::Item(item) => self.levels.raise(item),
+            Card::Item(item) => {
+                self.levels.raise(item);
+                if item == Item::TownWalls {
+                    self.town_max += WALLS_HP;
+                    self.town_hp = (self.town_hp + WALLS_HP).min(self.town_max);
+                }
+            }
             Card::Subsidy => self.money += cards::SUBSIDY,
         }
         self.pending -= 1;
@@ -314,6 +399,8 @@ impl World {
             l.route.lay(&mut self.map);
         }
         self.map.drop_stale_breaks();
+        let map = &self.map;
+        self.breaks.retain(|b| map.is_broken(b.0));
     }
 
     pub fn step(&mut self, cmds: &[Command]) {
@@ -324,10 +411,216 @@ impl World {
             return;
         }
         self.time += DT;
+        self.check_overrun();
         for s in &mut self.stations {
             s.produce(DT);
         }
         self.run_trains();
+        self.spawn();
+        self.move_enemies();
+        self.ram();
+        self.hit_town();
+        self.remove_dead();
+        self.repair_crew();
+    }
+
+    pub fn damage_town(&mut self, amount: f32) {
+        self.town_hp -= amount;
+        self.events.push(Event::TownHit);
+        if self.town_hp <= 0.0 {
+            self.town_hp = 0.0;
+            if self.state != State::Lost {
+                self.state = State::Lost;
+                self.events.push(Event::Lost);
+            }
+        }
+    }
+
+    pub fn spawn_enemy(&mut self, kind: EnemyKind, at: V2) {
+        let e = Enemy::new(self.next_id, kind, at, director::hp_scale(self.time));
+        self.next_id += 1;
+        self.enemies.push(e);
+    }
+
+    fn size(&self) -> V2 {
+        V2::new(self.map.width() as f32, self.map.height() as f32)
+    }
+
+    fn spawn(&mut self) {
+        let live = self.enemies.len();
+        let size = self.size();
+        let Some(g) = self.director.tick(DT, self.time, live, size, &mut self.rng) else {
+            return;
+        };
+        for _ in 0..g.count {
+            let jitter = V2::new(self.rng.range(-1.0, 1.0), self.rng.range(-1.0, 1.0));
+            let p = g.at + jitter;
+            let p = V2::new(p.x.clamp(0.1, size.x - 0.1), p.y.clamp(0.1, size.y - 0.1));
+            self.spawn_enemy(g.kind, p);
+        }
+    }
+
+    /// Positions of all train cars on the map.
+    fn car_points(&self) -> Vec<V2> {
+        self.lines
+            .iter()
+            .filter(|l| !l.train.is_wrecked())
+            .flat_map(|l| l.train.cars().iter().map(|c| c.pos))
+            .collect()
+    }
+
+    fn move_enemies(&mut self) {
+        let cars = self.car_points();
+        let town = tile_centre(station::TOWN);
+        let size = self.size();
+        // Unbroken track tiles, for the saboteurs.
+        let mut track = Vec::new();
+        for y in 0..self.map.height() {
+            for x in 0..self.map.width() {
+                if self.map.track(x, y) != 0 && !self.map.is_broken((x, y)) {
+                    track.push((x, y));
+                }
+            }
+        }
+        let nearest = |p: V2, pts: &[V2]| {
+            pts.iter()
+                .copied()
+                .min_by(|a, b| a.dist_sq(p).total_cmp(&b.dist_sq(p)))
+        };
+        let mut broken = Vec::new();
+        for e in &mut self.enemies {
+            let target = match e.kind {
+                EnemyKind::Resident => nearest(e.pos, &cars)
+                    .filter(|c| c.dist(e.pos) < RESIDENT_AGGRO)
+                    .unwrap_or(town),
+                EnemyKind::Bus => nearest(e.pos, &cars).unwrap_or(town),
+                EnemyKind::Saboteur => {
+                    if e.goal.is_none_or(|g| !track.contains(&g)) {
+                        e.goal = track.iter().copied().min_by(|a, b| {
+                            let da = tile_centre(*a).dist_sq(e.pos);
+                            let db = tile_centre(*b).dist_sq(e.pos);
+                            da.total_cmp(&db)
+                        });
+                        e.work = 0.0;
+                    }
+                    match e.goal {
+                        Some(g) => {
+                            let c = tile_centre(g);
+                            if c.dist(e.pos) < 0.35 {
+                                e.work += DT;
+                                if e.work >= SABOTAGE_TIME {
+                                    broken.push(g);
+                                    e.goal = None;
+                                }
+                            }
+                            c
+                        }
+                        None => town,
+                    }
+                }
+            };
+            e.think(target, DT);
+            e.pos = V2::new(e.pos.x.clamp(0.0, size.x), e.pos.y.clamp(0.0, size.y));
+        }
+        for t in broken {
+            self.break_track(t);
+        }
+        self.rebuild_grid();
+        enemy::separate(&mut self.enemies, &self.grid);
+    }
+
+    fn rebuild_grid(&mut self) {
+        let pts: Vec<V2> = self.enemies.iter().map(|e| e.pos).collect();
+        self.grid.build(&pts);
+    }
+
+    /// The lead car of a moving train hits enemies in its way.
+    fn ram(&mut self) {
+        for l in &self.lines {
+            let t = &l.train;
+            if !t.is_moving() || t.v < 0.5 {
+                continue;
+            }
+            let car = *t.lead();
+            let enemies = &mut self.enemies;
+            self.grid.query(car.pos, CAR_RADIUS + 1.5, |i| {
+                let e = &mut enemies[i];
+                let reach = CAR_RADIUS + e.radius();
+                let d = e.pos - car.pos;
+                if d.len_sq() >= reach * reach || e.ram_cd > 0.0 {
+                    return;
+                }
+                e.hit(RAM_FACTOR * t.v);
+                e.ram_cd = RAM_COOLDOWN;
+                e.push = d.norm() * 6.0;
+            });
+        }
+    }
+
+    /// Ground enemies that reach the town hit it and are gone.
+    fn hit_town(&mut self) {
+        let town = tile_centre(station::TOWN);
+        let mut dmg = 0.0;
+        self.enemies.retain(|e| {
+            if !e.kind.flies() && e.pos.dist(town) < TOWN_RADIUS {
+                dmg += e.stats().touch;
+                false
+            } else {
+                true
+            }
+        });
+        if dmg > 0.0 {
+            self.damage_town(dmg);
+        }
+    }
+
+    fn remove_dead(&mut self) {
+        let mut i = 0;
+        while i < self.enemies.len() {
+            if self.enemies[i].hp <= 0.0 {
+                let e = self.enemies.swap_remove(i);
+                self.kills += 1;
+                self.events.push(Event::Killed { at: e.pos });
+            } else {
+                i += 1;
+            }
+        }
+    }
+
+    fn check_overrun(&mut self) {
+        self.rebuild_grid();
+        for s in &mut self.stations {
+            if s.is_town() {
+                continue;
+            }
+            let c = s.centre();
+            let mut n = 0;
+            let enemies = &self.enemies;
+            self.grid.query(c, OVERRUN_RADIUS, |i| {
+                let e = &enemies[i];
+                if e.pos.dist_sq(c) < OVERRUN_RADIUS * OVERRUN_RADIUS {
+                    n += 1;
+                }
+            });
+            s.overrun = n >= OVERRUN_COUNT;
+        }
+    }
+
+    fn repair_crew(&mut self) {
+        for b in &mut self.breaks {
+            b.1 += DT;
+        }
+        if let Some(limit) = self.levels.repair_time() {
+            let due: Vec<Tile> = self
+                .breaks
+                .iter()
+                .filter(|b| b.1 >= limit)
+                .map(|b| b.0)
+                .collect();
+            for t in due {
+                self.repair(t);
+            }
+        }
     }
 
     fn run_trains(&mut self) {
@@ -403,10 +696,12 @@ mod tests {
     use crate::station::Industry;
 
     /// Steps the world and picks the first card at every level-up.
+    /// The town cannot fall.
     fn run(w: &mut World, steps: usize) -> Vec<Event> {
         let mut events = Vec::new();
         for _ in 0..steps {
             let pick = matches!(w.state, State::LevelUp(_));
+            w.town_hp = TOWN_HP;
             w.step(if pick { &[Command::Pick(0)] } else { &[] });
             events.append(&mut w.events);
         }
@@ -590,5 +885,144 @@ mod tests {
         let made = Industry::Coal.output() * 180.0;
         assert!(two as f32 <= made + 1.0, "{two} > {made}");
         assert!(two >= one);
+    }
+
+    #[test]
+    fn saboteur_breaks_track_and_repair_fixes_it() {
+        let mut w = World::new(11);
+        let tile = w.lines[0].route.pieces[3].tile;
+        w.spawn_enemy(EnemyKind::Saboteur, tile_centre(tile) + V2::new(0.2, 0.0));
+        let mut broke = None;
+        for _ in 0..60 * 4 {
+            w.step(&[]);
+            w.enemies.retain(|e| e.kind == EnemyKind::Saboteur);
+            for e in w.events.drain(..) {
+                if let Event::TrackBroken(t) = e {
+                    broke = Some(t);
+                }
+            }
+        }
+        let t = broke.expect("track broke");
+        assert!(w.map.is_broken(t));
+        w.money = 5.0;
+        assert_eq!(w.apply(&Command::Repair(t)), Err(Refusal::NoMoney));
+        w.money = 100.0;
+        w.apply(&Command::Repair(t)).unwrap();
+        assert!(!w.map.is_broken(t));
+        assert_eq!(w.money, 100.0 - REPAIR_COST);
+        assert_eq!(w.apply(&Command::Repair(t)), Err(Refusal::NotBroken));
+    }
+
+    #[test]
+    fn repair_crew_fixes_breaks_by_itself() {
+        let mut w = World::new(12);
+        w.levels.raise(Item::RepairCrew);
+        let tile = w.lines[0].route.pieces[2].tile;
+        w.break_track(tile);
+        for _ in 0..60 * 7 {
+            w.step(&[]);
+        }
+        assert!(w.map.is_broken(tile));
+        for _ in 0..60 * 2 {
+            w.step(&[]);
+        }
+        assert!(!w.map.is_broken(tile));
+    }
+
+    #[test]
+    fn crowd_overruns_an_industry() {
+        let mut w = World::new(13);
+        let s = industry(&w, Industry::Oil);
+        let c = w.stations[s].centre();
+        for k in 0..OVERRUN_COUNT {
+            w.spawn_enemy(EnemyKind::Resident, c + V2::new(0.1 * k as f32, 0.0));
+        }
+        w.step(&[]);
+        assert!(w.stations[s].overrun);
+        w.enemies.clear();
+        w.step(&[]);
+        assert!(!w.stations[s].overrun);
+    }
+
+    #[test]
+    fn residents_hit_the_town_and_the_town_falls() {
+        let mut w = World::new(14);
+        let town = tile_centre(station::TOWN);
+        w.spawn_enemy(EnemyKind::Resident, town + V2::new(0.5, 0.0));
+        w.step(&[]);
+        assert_eq!(w.town_hp, TOWN_HP - EnemyKind::Resident.stats().touch);
+        w.town_hp = 1.0;
+        w.spawn_enemy(EnemyKind::Resident, town);
+        w.step(&[]);
+        assert_eq!(w.state, State::Lost);
+        let t = w.time;
+        w.step(&[]);
+        assert_eq!(w.time, t, "a lost run stops");
+    }
+
+    #[test]
+    fn town_walls_raise_and_heal_town_hp() {
+        let mut w = World::new(15);
+        w.town_hp = 50.0;
+        w.state = State::LevelUp([Card::Item(Item::TownWalls); 3]);
+        w.pending = 1;
+        w.apply(&Command::Pick(1)).unwrap();
+        assert_eq!(w.town_max, TOWN_HP + WALLS_HP);
+        assert_eq!(w.town_hp, 75.0);
+    }
+
+    #[test]
+    fn ram_kills_residents_on_the_track() {
+        let mut w = World::new(16);
+        let mut killed = 0;
+        for _ in 0..60 * 30 {
+            if w.time > 3.0 && w.lines[0].train.is_moving() && w.enemies.len() < 3 {
+                let t = &w.lines[0].train;
+                let ahead = t.lead().pos + t.lead().heading * (t.dir * 0.6);
+                w.spawn_enemy(EnemyKind::Resident, ahead);
+            }
+            w.town_hp = TOWN_HP;
+            w.step(&[]);
+            killed += w
+                .events
+                .drain(..)
+                .filter(|e| matches!(e, Event::Killed { .. }))
+                .count();
+        }
+        assert!(killed > 0);
+    }
+
+    #[test]
+    fn same_seed_and_commands_give_the_same_run() {
+        let play = |seed| {
+            let mut w = World::new(seed);
+            w.money = 1000.0;
+            let oil = industry(&w, Industry::Oil);
+            for i in 0..60 * 240 {
+                let mut cmds = Vec::new();
+                if i == 300 {
+                    cmds.push(Command::Build {
+                        a: oil,
+                        b: 0,
+                        via: vec![],
+                    });
+                }
+                if matches!(w.state, State::LevelUp(_)) {
+                    cmds.push(Command::Pick(i % 3));
+                }
+                w.town_hp = TOWN_HP;
+                w.step(&cmds);
+            }
+            (
+                w.money,
+                w.kills,
+                w.enemies.iter().map(|e| e.pos).collect::<Vec<_>>(),
+            )
+        };
+        let (a, b) = (play(21), play(21));
+        assert_eq!(a.0, b.0);
+        assert_eq!(a.1, b.1);
+        assert_eq!(a.2, b.2);
+        assert!(!a.2.is_empty());
     }
 }
