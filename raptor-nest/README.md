@@ -40,6 +40,9 @@ falls.
 | P / Esc | pause |
 | M | mute / unmute |
 
+On a touch screen, drag on the left side to move. Buttons on the right
+side press the keys of the current screen. A tap acts as a left click.
+
 Audio starts after the first key press on the title screen (browser autoplay
 rules).
 

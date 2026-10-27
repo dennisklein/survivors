@@ -27,6 +27,9 @@ blast a line through everything. Survive 10 minutes for the best score.
 | M | Mute |
 | R / Enter, T | Restart, back to title (after a run) |
 
+On a touch screen, drag on the left side to move. Buttons on the right
+side press the keys of the current screen. A tap acts as a left click.
+
 ## Development
 
 Requires [mise](https://mise.jdx.dev/). From this directory:

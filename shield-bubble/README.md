@@ -27,6 +27,9 @@ build generators to grow the dome and hold out for 20 waves.
 | M | Mute / unmute |
 | Enter | Restart after game over |
 
+On a touch screen, drag on the left side to move. Buttons on the right
+side press the keys of the current screen. A tap acts as a left click.
+
 ## Development
 
 ```sh

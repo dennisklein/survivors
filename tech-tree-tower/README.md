@@ -31,6 +31,9 @@ right neighbours and the synergies carry you through 20 escalating waves.
 | P / Esc | Pause |
 | M | Mute / unmute |
 
+On a touch screen, drag on the left side to move. Buttons on the right
+side press the keys of the current screen. A tap acts as a left click.
+
 Audio starts after the first key press or click (browser autoplay rules).
 
 ## Build and run

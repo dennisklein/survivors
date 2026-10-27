@@ -17,6 +17,9 @@ and the front halts until it falls. Clear all three to win.
 | 1 / 2 / 3      | Pick an upgrade on level-up (or click a card)    |
 | M              | Mute / unmute                                    |
 
+On a touch screen, drag on the left side to move. Buttons on the right
+side press the keys of the current screen. A tap acts as a left click.
+
 Killed enemies drop salvage: green for XP and scrap, gold for big wrecks.
 Waves grow denser the further you push, and more of them flank from behind.
 

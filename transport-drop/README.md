@@ -18,6 +18,9 @@ and destroy the boss to win.
 | 1-3 / click | Choose an upgrade on level-up |
 | M | Mute / unmute |
 
+On a touch screen, drag on the left side to move. Buttons on the right
+side press the keys of the current screen. A tap acts as a left click.
+
 Fuel drains while airborne and refills on the ground (faster on a Repair
 Pad, which also heals you). Running dry forces a landing.
 

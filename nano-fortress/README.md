@@ -30,6 +30,9 @@ swarm chews on your walls. Buildpower is your DPS.
 | M | Mute / unmute |
 | P / Esc | Pause |
 
+On a touch screen, drag on the left side to move. Buttons on the right
+side press the keys of the current screen. A tap acts as a left click.
+
 ## Build and run
 
 Requires [mise](https://mise.jdx.dev).

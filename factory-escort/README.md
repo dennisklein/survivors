@@ -21,6 +21,9 @@ Commander or the Bot Lab is destroyed.
 | M | Mute / unmute |
 | R | Restart after game over |
 
+On a touch screen, drag on the left side to move. Buttons on the right
+side press the keys of the current screen. A tap acts as a left click.
+
 ## Building and running
 
 Requires [mise](https://mise.jdx.dev).

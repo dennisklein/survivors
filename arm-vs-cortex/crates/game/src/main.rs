@@ -9,6 +9,7 @@ use sim::game::{
     Phase, ShotStyle, Team, UnitKind, WORLD, commander_weapon, xp_needed,
 };
 use sim::math::{V2, v2};
+use touch::{is_key_down, is_key_pressed, is_mouse_button_pressed};
 
 const BG: Color = Color::new(0.07, 0.08, 0.06, 1.0);
 const GRID: Color = Color::new(0.13, 0.15, 0.11, 1.0);
@@ -731,9 +732,15 @@ impl App {
 
 #[macroquad::main(window_conf)]
 async fn main() {
+    touch::set_buttons(&[
+        touch::key("Capture", KeyCode::C),
+        touch::key("Tower", KeyCode::B),
+        touch::small("Start", KeyCode::Enter),
+        touch::small("Mute", KeyCode::M),
+    ]);
     clear_background(BG);
     centered("Loading...", screen_height() / 2.0, 32.0, WHITE);
-    next_frame().await;
+    touch::next_frame().await;
     let audio = Audio::new().await;
     let mut app = App {
         screen: Screen::Title,
@@ -751,6 +758,6 @@ async fn main() {
     loop {
         app.frame();
         app.draw();
-        next_frame().await;
+        touch::next_frame().await;
     }
 }

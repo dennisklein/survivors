@@ -10,6 +10,7 @@ use sim::game::{
     can_place, cell_at, cell_center, cells_of, grid_origin, neighbors,
 };
 use sim::math::V2;
+use touch::{is_key_down, is_key_pressed, is_mouse_button_pressed, mouse_position};
 
 const BG: Color = Color::new(0.08, 0.09, 0.08, 1.0);
 const PANEL: Color = Color::new(0.0, 0.0, 0.0, 0.7);
@@ -1035,10 +1036,16 @@ fn wrap(text: &str, x: f32, y: f32, w: f32, size: f32, col: Color) {
 
 #[macroquad::main(conf)]
 async fn main() {
+    touch::set_buttons(&[
+        touch::key("Rotate", KeyCode::R),
+        touch::small("Pause", KeyCode::P),
+        touch::small("Mute", KeyCode::M),
+        touch::small("Start", KeyCode::Enter),
+    ]);
     let mut app = App::new().await;
     loop {
         app.update();
         app.draw();
-        next_frame().await;
+        touch::next_frame().await;
     }
 }

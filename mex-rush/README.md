@@ -19,6 +19,9 @@ extractor for 20 seconds (starvation), and the run is over.
 | Tab / N | Toggle minimap |
 | M | Mute / unmute sound and music |
 
+On a touch screen, drag on the left side to move. Buttons on the right
+side press the keys of the current screen. A tap acts as a left click.
+
 `M` is used for mute (the sound toggle shared by all games in this repo), so
 the minimap lives on Tab / N.
 

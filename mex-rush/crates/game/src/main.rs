@@ -9,6 +9,7 @@ use sim::game::{
     WORLD,
 };
 use sim::math::V2;
+use touch::{is_key_down, is_key_pressed, is_mouse_button_pressed};
 
 const BG: Color = Color::new(0.08, 0.1, 0.09, 1.0);
 const METAL: Color = Color::new(0.55, 0.85, 1.0, 1.0);
@@ -649,6 +650,17 @@ impl App {
 
 #[macroquad::main(window_conf)]
 async fn main() {
+    touch::set_buttons(&[
+        touch::key("Mex", KeyCode::E),
+        touch::key("Fortify", KeyCode::R),
+        touch::key("Output", KeyCode::Key1),
+        touch::key("Armor", KeyCode::Key2),
+        touch::key("LLT", KeyCode::Key3),
+        touch::key("Repair", KeyCode::Key4),
+        touch::small("Map", KeyCode::Tab),
+        touch::small("Mute", KeyCode::M),
+        touch::small("Start", KeyCode::Enter),
+    ]);
     let seed = (miniquad::date::now() * 1000.0) as u64;
     rand::srand(seed);
     let mut app = App {
@@ -665,6 +677,6 @@ async fn main() {
         let dt = get_frame_time().min(1.0 / 20.0);
         app.update(dt);
         app.draw();
-        next_frame().await;
+        touch::next_frame().await;
     }
 }

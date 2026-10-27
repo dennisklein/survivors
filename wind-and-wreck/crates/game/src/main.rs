@@ -8,6 +8,9 @@ use sim::game::{
     ARENA, BUILD_RANGE, Building, EnemyKind, Event, Game, Input, Kind, PLAYER_R, Phase,
 };
 use sim::math::V2;
+use touch::{
+    is_key_down, is_key_pressed, is_mouse_button_down, is_mouse_button_pressed, mouse_position,
+};
 
 const BG: Color = Color::new(0.06, 0.09, 0.1, 1.0);
 const ENERGY: Color = Color::new(1.0, 0.85, 0.2, 1.0);
@@ -61,6 +64,17 @@ fn any_input() -> bool {
 
 #[macroquad::main(window_conf)]
 async fn main() {
+    touch::set_buttons(&[
+        touch::key("Shield", KeyCode::Space),
+        touch::key("Build", KeyCode::B),
+        touch::key("Wind", KeyCode::Key1),
+        touch::key("Solar", KeyCode::Key2),
+        touch::key("Store", KeyCode::Key3),
+        touch::key("Laser", KeyCode::Key4),
+        touch::small("Pause", KeyCode::P),
+        touch::small("Mute", KeyCode::M),
+        touch::small("Retry", KeyCode::R),
+    ]);
     clear_background(BG);
     center(
         "Charging capacitors...",
@@ -68,7 +82,7 @@ async fn main() {
         32.0,
         ENERGY,
     );
-    next_frame().await;
+    touch::next_frame().await;
     let audio = Audio::new().await;
     let mut app = App {
         game: Game::new(1),
@@ -106,7 +120,7 @@ async fn main() {
                 draw_hud(&app);
             }
         }
-        next_frame().await;
+        touch::next_frame().await;
     }
 }
 

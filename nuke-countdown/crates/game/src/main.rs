@@ -10,6 +10,7 @@ use sim::game::{
     metal_needed, xp_needed,
 };
 use sim::math::{V2, v2};
+use touch::{is_key_down, is_key_pressed, is_mouse_button_pressed};
 
 const BG: Color = Color::new(0.08, 0.09, 0.07, 1.0);
 const GRID: Color = Color::new(0.14, 0.16, 0.12, 1.0);
@@ -679,6 +680,17 @@ fn draw_title(t: f32) {
 
 #[macroquad::main(window_conf)]
 async fn main() {
+    touch::set_buttons(&[
+        touch::key("Drop", KeyCode::E),
+        touch::key("Nuke", KeyCode::N),
+        touch::key("Build", KeyCode::B),
+        touch::key("Turret", KeyCode::Key1),
+        touch::key("Solar", KeyCode::Key2),
+        touch::key("Anti", KeyCode::Key3),
+        touch::small("Back", KeyCode::Escape),
+        touch::small("Mute", KeyCode::M),
+        touch::small("Retry", KeyCode::Enter),
+    ]);
     let mut audio = Audio::new().await;
     let mut screen = Screen::Title;
     let mut seed = 1;
@@ -717,6 +729,6 @@ async fn main() {
                 app.draw_hud(audio.muted);
             }
         }
-        next_frame().await;
+        touch::next_frame().await;
     }
 }

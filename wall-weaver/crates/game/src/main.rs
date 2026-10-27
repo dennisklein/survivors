@@ -8,6 +8,7 @@ use sim::game::{
     CORE, CORE_RADIUS, Cell, EnemyKind, Event, Game, H, Input, MAX_TURRET_LEVEL, Phase, TILE, W,
     WAVES, center, gates, tile_of,
 };
+use touch::{is_key_down, is_key_pressed, is_mouse_button_pressed, mouse_position};
 
 const HUD: f32 = 44.0;
 const WORLD_W: f32 = W as f32 * TILE;
@@ -76,6 +77,12 @@ fn centered(text: &str, y: f32, size: f32, color: Color) {
 
 #[macroquad::main(window_conf)]
 async fn main() {
+    touch::set_buttons(&[
+        touch::click("Demolish", MouseButton::Right),
+        touch::small("Back", KeyCode::Escape),
+        touch::small("Mute", KeyCode::M),
+        touch::small("Start", KeyCode::Enter),
+    ]);
     let mut audio = Audio::new().await;
     let mut screen = Screen::Title;
     let mut game = Game::new(macroquad::miniquad::date::now() as u64);
@@ -154,7 +161,7 @@ async fn main() {
                 }
             }
         }
-        next_frame().await;
+        touch::next_frame().await;
     }
 }
 

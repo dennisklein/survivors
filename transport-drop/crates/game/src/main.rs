@@ -8,6 +8,7 @@ use sim::game::{
     CRATE_FALL, EnemyKind, Event, Flight, Game, Input, KINDS, Kind, Phase, WAVES, WORLD, xp_needed,
 };
 use sim::math::V2;
+use touch::{is_key_down, is_key_pressed, is_mouse_button_pressed, mouse_position};
 
 fn window_conf() -> Conf {
     Conf {
@@ -785,6 +786,15 @@ fn any_input() -> bool {
 
 #[macroquad::main(window_conf)]
 async fn main() {
+    touch::set_buttons(&[
+        touch::key("Land", KeyCode::L),
+        touch::key("Laser", KeyCode::Key1),
+        touch::key("Teeth", KeyCode::Key2),
+        touch::key("Mex", KeyCode::Key3),
+        touch::key("Pad", KeyCode::Key4),
+        touch::small("Mute", KeyCode::M),
+        touch::small("Start", KeyCode::Enter),
+    ]);
     let mut audio = Audio::new().await;
     let mut screen = Screen::Title;
     let mut app = App::new();
@@ -898,6 +908,6 @@ async fn main() {
                 }
             }
         }
-        next_frame().await;
+        touch::next_frame().await;
     }
 }

@@ -22,6 +22,9 @@ core or the Commander is destroyed.
 | 1 / 2 / 3 or click    | Pick an upgrade on level-up                         |
 | M                     | Mute / unmute                                       |
 
+On a touch screen, drag on the left side to move. Buttons on the right
+side press the keys of the current screen. A tap acts as a left click.
+
 Your Commander's gun fires automatically. Kills drop salvage: walk over it for
 scrap (to build) and XP (to level up). Turrets can be built on top of walls.
 

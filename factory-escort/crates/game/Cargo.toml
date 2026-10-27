@@ -8,4 +8,5 @@ publish.workspace = true
 
 [dependencies]
 macroquad = "=0.4.16"
+touch = { path = "../../../crates/touch" }
 rules = { path = "../rules" }

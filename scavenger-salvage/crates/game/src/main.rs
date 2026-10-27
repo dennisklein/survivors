@@ -8,6 +8,7 @@ use sim::game::{
     EnemyKind, Event, GRAB_RANGE, Game, Input, Phase, RECYCLER_RADIUS, StructKind, V2, WAVE_TIME,
     WORLD, center, quota,
 };
+use touch::{is_key_down, is_key_pressed, is_mouse_button_pressed, mouse_position};
 
 const BG: Color = Color::new(0.09, 0.08, 0.07, 1.0);
 const GRID: Color = Color::new(0.14, 0.13, 0.11, 1.0);
@@ -76,6 +77,13 @@ fn any_input() -> bool {
 
 #[macroquad::main(window_conf)]
 async fn main() {
+    touch::set_buttons(&[
+        touch::key("Grab", KeyCode::E),
+        touch::small("Map", KeyCode::Tab),
+        touch::small("Pause", KeyCode::P),
+        touch::small("Mute", KeyCode::M),
+        touch::small("Start", KeyCode::Enter),
+    ]);
     let mut audio = Audio::new().await;
     let mut screen = Screen::Title;
     let mut game = Game::new(1);
@@ -220,7 +228,7 @@ async fn main() {
                 }
             }
         }
-        next_frame().await;
+        touch::next_frame().await;
     }
 }
 

@@ -6,6 +6,7 @@ use rules::{
     BuildingKind, EnemyKind, Event, Game, Input, LAB_POS, LAB_RADIUS, Order, Phase, ShotKind,
     UnitKind, V2, WIN_TIME, WORLD, synth,
 };
+use touch::{is_key_down, is_key_pressed, is_mouse_button_pressed, mouse_position};
 
 const BG: Color = Color::new(0.08, 0.09, 0.11, 1.0);
 const ARMY: Color = Color::new(0.35, 0.65, 1.0, 1.0);
@@ -720,6 +721,19 @@ fn handle_events(g: &mut Game, audio: &mut Audio, fx: &mut Vec<Effect>) {
 
 #[macroquad::main(window_conf)]
 async fn main() {
+    touch::set_buttons(&[
+        touch::click("Rally", MouseButton::Right),
+        touch::key("Follow", KeyCode::F),
+        touch::key("Mex", KeyCode::Q),
+        touch::key("Solar", KeyCode::E),
+        touch::key("Pawn", KeyCode::Key1),
+        touch::key("Grunt", KeyCode::Key2),
+        touch::key("Rocko", KeyCode::Key3),
+        touch::key("Hammer", KeyCode::Key4),
+        touch::key("Warrior", KeyCode::Key5),
+        touch::small("Mute", KeyCode::M),
+        touch::small("Retry", KeyCode::R),
+    ]);
     let mut audio = Audio::load().await;
     let mut seed = 1u64;
     let mut g = Game::new(seed);
@@ -892,6 +906,6 @@ async fn main() {
         if audio.muted {
             draw_text("MUTED", 14.0, screen_height() - 90.0, 20.0, RED);
         }
-        next_frame().await;
+        touch::next_frame().await;
     }
 }

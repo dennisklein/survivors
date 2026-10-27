@@ -7,6 +7,7 @@ use audio::{Audio, Sfx};
 use macroquad::prelude::*;
 use sim::game::{BUILD_KINDS, Event, Game, Input, Phase};
 use sim::math::V2;
+use touch::{is_key_down, is_key_pressed, is_mouse_button_pressed, mouse_position};
 
 pub const VIEW_H: f32 = 760.0;
 
@@ -106,6 +107,18 @@ fn spawn_ring(parts: &mut Vec<Particle>, pos: V2, size: f32, color: Color) {
 
 #[macroquad::main(window_conf)]
 async fn main() {
+    touch::set_buttons(&[
+        touch::click("D-Gun", MouseButton::Right),
+        touch::key("1", KeyCode::Key1),
+        touch::key("2", KeyCode::Key2),
+        touch::key("3", KeyCode::Key3),
+        touch::key("4", KeyCode::Key4),
+        touch::key("5", KeyCode::Key5),
+        touch::small("Back", KeyCode::Escape),
+        touch::small("Pause", KeyCode::P),
+        touch::small("Mute", KeyCode::M),
+        touch::small("Retry", KeyCode::R),
+    ]);
     rand::srand(miniquad::date::now() as u64);
     let mut audio = Audio::new().await;
     let mut game = Game::new(rand::rand() as u64);
@@ -312,6 +325,6 @@ async fn main() {
                 }
             }
         }
-        next_frame().await;
+        touch::next_frame().await;
     }
 }

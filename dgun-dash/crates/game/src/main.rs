@@ -9,6 +9,7 @@ use sim::game::{
     PickupKind, STRUCT_KINDS, StructKind, TURRET_RANGE, xp_needed,
 };
 use sim::math::{V2, v2};
+use touch::{is_key_down, is_key_pressed, is_mouse_button_pressed, mouse_position};
 
 const BG: Color = Color::new(0.05, 0.06, 0.08, 1.0);
 const GRID: Color = Color::new(0.12, 0.15, 0.19, 1.0);
@@ -818,6 +819,16 @@ fn card_at(p: Vec2) -> Option<usize> {
 
 #[macroquad::main(window_conf)]
 async fn main() {
+    touch::set_buttons(&[
+        touch::click("D-Gun", MouseButton::Right),
+        touch::key("Mine", KeyCode::Key1),
+        touch::key("Turret", KeyCode::Key2),
+        touch::key("EMP", KeyCode::Key3),
+        touch::small("Pause", KeyCode::P),
+        touch::small("Mute", KeyCode::M),
+        touch::small("Retry", KeyCode::R),
+        touch::small("Title", KeyCode::T),
+    ]);
     let audio = Audio::new().await;
     let mut app = App {
         screen: Screen::Title,
@@ -844,6 +855,6 @@ async fn main() {
     loop {
         app.view.scale = (screen_height() / 820.0).clamp(0.6, 1.6);
         app.frame();
-        next_frame().await;
+        touch::next_frame().await;
     }
 }

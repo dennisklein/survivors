@@ -7,6 +7,7 @@ use sim::game::{
     Game, Upgrade, xp_to_next,
 };
 use sim::math::V2;
+use touch::mouse_position;
 
 const GROUND: Color = Color::new(0.10, 0.13, 0.11, 1.0);
 const GRID: Color = Color::new(0.16, 0.20, 0.17, 1.0);

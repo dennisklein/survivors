@@ -38,6 +38,9 @@ enemies with the D-Gun. Survive 20 minutes, then destroy the T3 Korgoth.
 | M | mute / unmute |
 | R | redeploy after victory or defeat |
 
+On a touch screen, drag on the left side to move. Buttons on the right
+side press the keys of the current screen. A tap acts as a left click.
+
 Sound starts after the first key press or click (browser autoplay policy).
 
 ## Development

@@ -28,6 +28,9 @@ of three upgrades). Labs you capture can be retaken if they are destroyed.
 | M | Mute / unmute |
 | Enter | Start / return to the title screen |
 
+On a touch screen, drag on the left side to move. Buttons on the right
+side press the keys of the current screen. A tap acts as a left click.
+
 Sound starts after the first key press (browser autoplay rules).
 
 ## Development

@@ -9,6 +9,7 @@ use sim::game::{
     BUILD_TIME, CORE_POS, Event, Game, Input, Phase, RaptorKind, TowerKind, WORLD, build_radius,
 };
 use sim::math::V2;
+use touch::{is_key_down, is_key_pressed, is_mouse_button_pressed, mouse_position};
 
 const BG: Color = Color::new(0.07, 0.10, 0.07, 1.0);
 const PANEL: Color = Color::new(0.0, 0.0, 0.0, 0.65);
@@ -856,6 +857,17 @@ fn draw_tower(kind: TowerKind, p: Vec2, fired: f32, t: f32) {
 
 #[macroquad::main(conf)]
 async fn main() {
+    touch::set_buttons(&[
+        touch::key("Wave", KeyCode::Space),
+        touch::key("1", KeyCode::Key1),
+        touch::key("2", KeyCode::Key2),
+        touch::key("3", KeyCode::Key3),
+        touch::key("4", KeyCode::Key4),
+        touch::key("5", KeyCode::Key5),
+        touch::small("Pause", KeyCode::P),
+        touch::small("Mute", KeyCode::M),
+        touch::small("Retry", KeyCode::R),
+    ]);
     let audio = Audio::new().await;
     let mut app = App {
         game: Game::new(1),
@@ -871,6 +883,6 @@ async fn main() {
     loop {
         app.update(get_frame_time());
         app.draw();
-        next_frame().await;
+        touch::next_frame().await;
     }
 }

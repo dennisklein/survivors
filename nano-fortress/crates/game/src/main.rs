@@ -9,6 +9,7 @@ use rules::game::{
     WORLD_H, WORLD_W,
 };
 use rules::geom::V2;
+use touch::{is_key_down, is_key_pressed, is_mouse_button_pressed, mouse_position};
 
 const BLUE: Color = Color::new(0.35, 0.65, 1.0, 1.0);
 const NANO: Color = Color::new(0.35, 1.0, 0.55, 1.0);
@@ -545,6 +546,14 @@ fn any_input() -> bool {
 
 #[macroquad::main(window_conf)]
 async fn main() {
+    touch::set_buttons(&[
+        touch::key("Bld <", KeyCode::Q),
+        touch::key("Bld >", KeyCode::E),
+        touch::key("Repair", KeyCode::LeftShift),
+        touch::small("Pause", KeyCode::P),
+        touch::small("Mute", KeyCode::M),
+        touch::small("Retry", KeyCode::R),
+    ]);
     let mut audio = Audio::new().await;
     let mut seed = 1u64;
     let mut g = Game::new(seed);
@@ -576,7 +585,7 @@ async fn main() {
                     g = Game::new(seed);
                     screen = Screen::Playing;
                 }
-                next_frame().await;
+                touch::next_frame().await;
                 continue;
             }
             Screen::Playing => {
@@ -767,6 +776,6 @@ async fn main() {
             Screen::Over => draw_over(&g),
             _ => {}
         }
-        next_frame().await;
+        touch::next_frame().await;
     }
 }

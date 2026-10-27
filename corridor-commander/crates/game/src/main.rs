@@ -8,6 +8,7 @@ use sim::game::{
     BUILD_RANGE, EnemyKind, Event, GATE_SPACING, GATES, Game, Input, PLAYER_R, Phase, TOWER_R, V2,
     VIEW_H, WIDTH, xp_needed,
 };
+use touch::{is_key_down, is_key_pressed, is_mouse_button_pressed, mouse_position};
 
 const BG: Color = Color::new(0.07, 0.08, 0.1, 1.0);
 const GROUND: Color = Color::new(0.13, 0.15, 0.13, 1.0);
@@ -435,6 +436,11 @@ fn any_input() -> bool {
 
 #[macroquad::main(window_conf)]
 async fn main() {
+    touch::set_buttons(&[
+        touch::key("Dash", KeyCode::Space),
+        touch::small("Mute", KeyCode::M),
+        touch::small("Start", KeyCode::Enter),
+    ]);
     let mut audio = Audio::new().await;
     let mut screen = Screen::Title;
     let mut game = Game::new(macroquad::miniquad::date::now() as u64);
@@ -557,6 +563,6 @@ async fn main() {
                 }
             }
         }
-        next_frame().await;
+        touch::next_frame().await;
     }
 }

@@ -23,6 +23,9 @@ arrives every fifth wave.
 | P / Esc            | Pause                                          |
 | M                  | Mute / unmute                                  |
 
+On a touch screen, drag on the left side to move. Buttons on the right
+side press the keys of the current screen. A tap acts as a left click.
+
 Drag a towed wreck into the Recycler ring to deposit it. Upgrades include
 Power Winch (less slowdown), Extra Tow Cable (tow a chain of wrecks),
 Spread Shot, Piercing Slugs and Recycler Refit (+25% salvage).

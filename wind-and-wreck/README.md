@@ -29,6 +29,9 @@ mise run build   # writes dist/index.html, wind-and-wreck.wasm, loader, assets
 | M | Mute / unmute |
 | P / Esc | Pause |
 
+On a touch screen, drag on the left side to move. Buttons on the right
+side press the keys of the current screen. A tap acts as a left click.
+
 Kill bots to collect scrap: it pays for buildings and fills your XP bar.
 Watch the wind forecast in the HUD: build solar when lulls are coming, and
 storage to bank the gusts.
