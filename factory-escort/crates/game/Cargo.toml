@@ -1,0 +1,11 @@
+[package]
+name = "factory-escort"
+version = "0.1.0"
+description = "Factory Escort: macroquad front end"
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+macroquad = "=0.4.16"
+rules = { path = "../rules" }
